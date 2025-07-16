@@ -388,26 +388,202 @@ class EnhancedToolkit:
     def get_technical_indicators(
         self,
         symbol: Annotated[str, "Symbol to analyze"],
-        indicator: Annotated[str, "Technical indicator (rsi, macd, boll, etc.)"],
+        indicator: Annotated[str, "Technical indicator (rsi, macd, boll, etc.) or 'comprehensive' for full crypto analysis"],
         current_date: Annotated[str, "Current date in YYYY-MM-DD format"]
     ) -> str:
         """
         Get technical indicators for any asset class.
-        Supports all standard indicators: RSI, MACD, Bollinger Bands, SMA, EMA, etc.
+        For crypto: Supports all standard indicators PLUS crypto-specific metrics (funding rates, perp basis, realized volatility).
+        For equity: Uses traditional technical analysis.
         """
         try:
-            # Legacy fallback for now - will be enhanced in Phase 5
-            from ..agents.utils.agent_utils import Toolkit
-            legacy_toolkit = Toolkit(self.config)
+            asset_class = self.config.get("asset_class", "equity")
             
-            if self.config.get("online_tools", True):
-                return legacy_toolkit.get_stockstats_indicators_report_online(symbol, indicator, current_date)
+            if asset_class == "crypto":
+                # Use crypto-specific technical analysis
+                return asyncio.run(self._get_crypto_technical_indicators(symbol, indicator, current_date))
             else:
-                return legacy_toolkit.get_stockstats_indicators_report(symbol, indicator, current_date)
+                # Use legacy equity analysis
+                from ..agents.utils.agent_utils import Toolkit
+                legacy_toolkit = Toolkit(self.config)
+                
+                if self.config.get("online_tools", True):
+                    return legacy_toolkit.get_stockstats_indicators_report_online(symbol, indicator, current_date)
+                else:
+                    return legacy_toolkit.get_stockstats_indicators_report(symbol, indicator, current_date)
                 
         except Exception as e:
             logger.error(f"Error getting technical indicators for {symbol}: {e}")
             return f"❌ Error retrieving technical indicators for {symbol}: {str(e)}"
+    
+    @tool
+    def get_crypto_24h_analysis(
+        self,
+        symbol: Annotated[str, "Crypto symbol to analyze (e.g., 'BTC', 'ETH')"],
+        current_date: Annotated[str, "Current date in YYYY-MM-DD format"],
+        focus_areas: Annotated[str, "Comma-separated focus areas: volatility,volume,momentum,sessions"] = "volatility,volume,momentum"
+    ) -> str:
+        """
+        Get comprehensive 24/7 crypto market analysis.
+        Includes volatility patterns, volume analysis, momentum indicators, and market session effects.
+        Only available for crypto asset class.
+        """
+        try:
+            asset_class = self.config.get("asset_class", "equity")
+            
+            if asset_class != "crypto":
+                return "❌ 24/7 crypto analysis only available when asset_class is set to 'crypto'"
+            
+            focus_list = [area.strip() for area in focus_areas.split(",")]
+            return asyncio.run(self._get_crypto_24h_analysis(symbol, current_date, focus_list))
+                
+        except Exception as e:
+            logger.error(f"Error getting 24h crypto analysis for {symbol}: {e}")
+            return f"❌ Error retrieving 24h analysis for {symbol}: {str(e)}"
+    
+    @tool
+    def get_crypto_perp_analysis(
+        self,
+        symbol: Annotated[str, "Crypto symbol with perpetual futures (e.g., 'BTC', 'ETH')"],
+        current_date: Annotated[str, "Current date in YYYY-MM-DD format"]
+    ) -> str:
+        """
+        Get perpetual futures analysis including basis, funding rates, and open interest.
+        Analyzes the relationship between spot and perpetual futures prices.
+        Only available for crypto asset class.
+        """
+        try:
+            asset_class = self.config.get("asset_class", "equity")
+            
+            if asset_class != "crypto":
+                return "❌ Perpetual futures analysis only available when asset_class is set to 'crypto'"
+            
+            return asyncio.run(self._get_crypto_perp_analysis(symbol, current_date))
+                
+        except Exception as e:
+            logger.error(f"Error getting perp analysis for {symbol}: {e}")
+            return f"❌ Error retrieving perpetual analysis for {symbol}: {str(e)}"
+    
+    @tool
+    def get_whale_flow_analysis(
+        self,
+        symbol: Annotated[str, "Crypto symbol to analyze whale flows (e.g., 'BTC', 'ETH')"],
+        timeframe: Annotated[str, "Analysis timeframe: '1h', '4h', '24h', '7d'"] = "24h"
+    ) -> str:
+        """
+        Get whale flow and large transaction analysis for crypto markets.
+        Tracks large transactions, exchange flows, and whale activity patterns.
+        Only available for crypto asset class.
+        """
+        try:
+            asset_class = self.config.get("asset_class", "equity")
+            
+            if asset_class != "crypto":
+                return "❌ Whale flow analysis only available when asset_class is set to 'crypto'"
+            
+            return asyncio.run(self._get_whale_flow_analysis(symbol, timeframe))
+                
+        except Exception as e:
+            logger.error(f"Error getting whale flow analysis for {symbol}: {e}")
+            return f"❌ Error retrieving whale flow analysis for {symbol}: {str(e)}"
+    
+    async def _get_crypto_technical_indicators(self, symbol: str, indicator: str, current_date: str) -> str:
+        """Get crypto technical indicators using crypto-specific analysis."""
+        try:
+            from .crypto import CryptoStockstatsUtils
+            
+            crypto_utils = CryptoStockstatsUtils()
+            online = self.config.get("online_tools", True)
+            
+            return await crypto_utils.get_crypto_technical_indicators(
+                symbol=symbol,
+                indicator=indicator,
+                current_date=current_date,
+                include_crypto_metrics=True,
+                online=online
+            )
+            
+        except ImportError:
+            logger.error("Crypto technical analysis not available - crypto modules not found")
+            return f"❌ Crypto technical analysis not available for {symbol}"
+        except Exception as e:
+            logger.error(f"Error in crypto technical analysis: {e}")
+            return f"❌ Error analyzing {symbol}: {str(e)}"
+    
+    async def _get_crypto_24h_analysis(self, symbol: str, current_date: str, focus_areas: List[str]) -> str:
+        """Get 24/7 crypto market analysis."""
+        try:
+            from .crypto import CryptoStockstatsUtils
+            
+            crypto_utils = CryptoStockstatsUtils()
+            
+            return await crypto_utils.get_crypto_24h_analysis(
+                symbol=symbol,
+                current_date=current_date,
+                focus_areas=focus_areas
+            )
+            
+        except ImportError:
+            logger.error("Crypto 24h analysis not available - crypto modules not found")
+            return f"❌ Crypto 24h analysis not available for {symbol}"
+        except Exception as e:
+            logger.error(f"Error in crypto 24h analysis: {e}")
+            return f"❌ Error in 24h analysis for {symbol}: {str(e)}"
+    
+    async def _get_crypto_perp_analysis(self, symbol: str, current_date: str) -> str:
+        """Get perpetual futures analysis."""
+        try:
+            from .crypto import CryptoStockstatsUtils
+            
+            crypto_utils = CryptoStockstatsUtils()
+            
+            # Get comprehensive analysis which includes perp data
+            comprehensive_analysis = await crypto_utils.get_crypto_technical_indicators(
+                symbol=symbol,
+                indicator="comprehensive",
+                current_date=current_date,
+                include_crypto_metrics=True,
+                online=True
+            )
+            
+            # Extract perp-specific information
+            if "perpetual_analysis" in comprehensive_analysis.lower() or "funding" in comprehensive_analysis.lower():
+                return comprehensive_analysis
+            else:
+                return f"## Perpetual Futures Analysis: {symbol}\n\n" \
+                       f"📊 **Analysis Date**: {current_date}\n\n" \
+                       f"⚠️ **Data Availability**: Limited perpetual futures data available for {symbol}.\n\n" \
+                       f"For major cryptocurrencies like BTC and ETH, perpetual futures data includes:\n" \
+                       f"- Basis (Perp Price - Spot Price)\n" \
+                       f"- Funding rates and trends\n" \
+                       f"- Open interest patterns\n\n" \
+                       f"*Note: Perpetual futures are derivative products that track spot prices without expiration.*"
+            
+        except ImportError:
+            logger.error("Crypto perp analysis not available - crypto modules not found")
+            return f"❌ Crypto perpetual analysis not available for {symbol}"
+        except Exception as e:
+            logger.error(f"Error in crypto perp analysis: {e}")
+            return f"❌ Error in perpetual analysis for {symbol}: {str(e)}"
+    
+    async def _get_whale_flow_analysis(self, symbol: str, timeframe: str) -> str:
+        """Get whale flow and large transaction analysis."""
+        try:
+            from .crypto import WhaleFlowTracker
+            
+            whale_tracker = WhaleFlowTracker()
+            
+            return await whale_tracker.get_whale_flow_summary(
+                symbol=symbol,
+                timeframe=timeframe
+            )
+            
+        except ImportError:
+            logger.error("Whale flow analysis not available - crypto modules not found")
+            return f"❌ Whale flow analysis not available for {symbol}"
+        except Exception as e:
+            logger.error(f"Error in whale flow analysis: {e}")
+            return f"❌ Error in whale flow analysis for {symbol}: {str(e)}"
 
 
 # =============================================================================
