@@ -304,3 +304,313 @@ def select_llm_provider() -> tuple[str, str]:
     print(f"You selected: {display_name}\tURL: {url}")
     
     return display_name, url
+
+
+# =============================================================================
+# Phase 9: Enhanced Provider Selection and Cost Management
+# =============================================================================
+
+def select_provider_preset() -> str:
+    """Select provider preset (free, premium, enterprise)."""
+    
+    PROVIDER_PRESETS = [
+        ("Free Tier - Basic providers with rate limits", "free"),
+        ("Premium Tier - Enhanced providers with higher limits", "premium"),
+        ("Enterprise Tier - Premium providers with maximum capabilities", "enterprise"),
+    ]
+    
+    choice = questionary.select(
+        "Select Your [Provider Preset]:",
+        choices=[
+            questionary.Choice(display, value=value) for display, value in PROVIDER_PRESETS
+        ],
+        instruction="\n- Free: CoinGecko (basic), Yahoo Finance, basic LLMs\n- Premium: CoinGecko Pro, Finnhub Premium, GPT-4\n- Enterprise: All premium providers + specialized tools",
+        style=questionary.Style(
+            [
+                ("selected", "fg:cyan noinherit"),
+                ("highlighted", "fg:cyan noinherit"),
+                ("pointer", "fg:cyan noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    if choice is None:
+        console.print("\n[red]No provider preset selected. Using 'free' tier...[/red]")
+        return "free"
+    
+    return choice
+
+
+def select_cost_preset() -> str:
+    """Select cost optimization preset."""
+    
+    COST_PRESETS = [
+        ("Cheap - Fast models, lower costs (~$0.10/analysis)", "cheap"),
+        ("Balanced - Mix of performance and cost (~$0.50/analysis)", "balanced"),
+        ("Premium - Best models, higher costs (~$2.00/analysis)", "premium"),
+    ]
+    
+    choice = questionary.select(
+        "Select Your [Cost Preset]:",
+        choices=[
+            questionary.Choice(display, value=value) for display, value in COST_PRESETS
+        ],
+        instruction="\n- Cheap: GPT-4o-mini, fast inference\n- Balanced: Mix of GPT-4o-mini and GPT-4o\n- Premium: GPT-4o, GPT-o1 for deep analysis",
+        style=questionary.Style(
+            [
+                ("selected", "fg:cyan noinherit"),
+                ("highlighted", "fg:cyan noinherit"),
+                ("pointer", "fg:cyan noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    if choice is None:
+        console.print("\n[red]No cost preset selected. Using 'balanced'...[/red]")
+        return "balanced"
+    
+    return choice
+
+
+def select_crypto_providers(provider_preset: str = "free") -> dict:
+    """Select specific crypto providers based on preset."""
+    
+    provider_options = {
+        "free": {
+            "market_data": ["CoinGecko (Free)", "Binance Public API"],
+            "news": ["CryptoPanic (Free)", "CoinDesk RSS"],
+            "execution": ["Paper Trading (Simulation)"],
+            "risk": ["Basic Risk Manager"]
+        },
+        "premium": {
+            "market_data": ["CoinGecko Pro", "CryptoCompare", "Binance API"],
+            "news": ["CryptoPanic Pro", "Twitter Sentiment", "Reddit Analysis"],
+            "execution": ["Paper Trading", "CCXT Exchanges", "Binance"],
+            "risk": ["Advanced Risk Manager", "Funding Calculator"]
+        },
+        "enterprise": {
+            "market_data": ["All Premium Sources", "Real-time WebSockets"],
+            "news": ["All Premium Sources", "Custom News Aggregation"],
+            "execution": ["All Exchanges", "Hyperliquid", "Advanced Order Types"],
+            "risk": ["Full Risk Suite", "24/7 Monitoring", "Liquidation Alerts"]
+        }
+    }
+    
+    selected_providers = provider_options.get(provider_preset, provider_options["free"])
+    
+    console.print(f"\n[green]Selected {provider_preset.title()} Tier Crypto Providers:[/green]")
+    for category, providers in selected_providers.items():
+        console.print(f"  • {category.replace('_', ' ').title()}: {', '.join(providers)}")
+    
+    return selected_providers
+
+
+def select_equity_providers(provider_preset: str = "free") -> dict:
+    """Select specific equity providers based on preset."""
+    
+    provider_options = {
+        "free": {
+            "market_data": ["Yahoo Finance", "Alpha Vantage (Free)"],
+            "news": ["Yahoo Finance News", "RSS Feeds"],
+            "execution": ["Paper Trading (Simulation)"],
+            "risk": ["Basic Risk Manager"]
+        },
+        "premium": {
+            "market_data": ["Finnhub", "Alpha Vantage Pro", "Yahoo Finance"],
+            "news": ["Finnhub News", "Reddit Analysis", "Twitter Sentiment"],
+            "execution": ["Paper Trading", "Broker APIs"],
+            "risk": ["Advanced Risk Manager", "Portfolio Analytics"]
+        },
+        "enterprise": {
+            "market_data": ["All Premium Sources", "Real-time Feeds"],
+            "news": ["All Premium Sources", "Custom Aggregation"],
+            "execution": ["All Brokers", "Advanced Order Management"],
+            "risk": ["Full Risk Suite", "Real-time Monitoring"]
+        }
+    }
+    
+    selected_providers = provider_options.get(provider_preset, provider_options["free"])
+    
+    console.print(f"\n[green]Selected {provider_preset.title()} Tier Equity Providers:[/green]")
+    for category, providers in selected_providers.items():
+        console.print(f"  • {category.replace('_', ' ').title()}: {', '.join(providers)}")
+    
+    return selected_providers
+
+
+def apply_cost_preset_to_config(config: dict, cost_preset: str, asset_class: str) -> dict:
+    """Apply cost preset settings to configuration."""
+    
+    cost_configs = {
+        "cheap": {
+            "shallow_thinker": "gpt-4o-mini",
+            "deep_thinker": "gpt-4o-mini",
+            "max_debate_rounds": 2,
+            "max_risk_discuss_rounds": 2,
+            "model_cost_preset": "cheap"
+        },
+        "balanced": {
+            "shallow_thinker": "gpt-4o-mini", 
+            "deep_thinker": "gpt-4o",
+            "max_debate_rounds": 3,
+            "max_risk_discuss_rounds": 3,
+            "model_cost_preset": "balanced"
+        },
+        "premium": {
+            "shallow_thinker": "gpt-4o",
+            "deep_thinker": "o1-preview",
+            "max_debate_rounds": 5,
+            "max_risk_discuss_rounds": 4,
+            "model_cost_preset": "premium"
+        }
+    }
+    
+    # Default to cheap for crypto, balanced for equity
+    if cost_preset not in cost_configs:
+        cost_preset = "cheap" if asset_class == "crypto" else "balanced"
+    
+    preset_config = cost_configs[cost_preset]
+    
+    # Apply preset to config
+    for key, value in preset_config.items():
+        config[key] = value
+    
+    # Crypto-specific optimizations
+    if asset_class == "crypto":
+        config["features"]["crypto_support"] = True
+        config["features"]["24_7_trading"] = True
+        config["features"]["funding_analysis"] = True
+        
+        # Enable cost optimization for crypto
+        if cost_preset == "cheap":
+            config["max_concurrent_requests"] = 2
+            config["rate_limit_delay"] = 1.0
+        else:
+            config["max_concurrent_requests"] = 5
+            config["rate_limit_delay"] = 0.5
+    
+    console.print(f"\n[green]Applied {cost_preset.title()} cost preset for {asset_class} analysis[/green]")
+    
+    return config
+
+
+def validate_provider_configuration(asset_class: str, provider_preset: str) -> bool:
+    """Validate that required providers are available for the selected configuration."""
+    import os
+    
+    required_keys = []
+    
+    if asset_class == "crypto":
+        if provider_preset in ["premium", "enterprise"]:
+            required_keys.extend(["COINGECKO_API_KEY", "BINANCE_API_KEY"])
+        required_keys.append("OPENAI_API_KEY")
+    else:  # equity
+        if provider_preset in ["premium", "enterprise"]:
+            required_keys.extend(["FINNHUB_API_KEY", "ALPHA_VANTAGE_API_KEY"])
+        required_keys.append("OPENAI_API_KEY")
+    
+    missing_keys = []
+    for key in required_keys:
+        if not os.getenv(key):
+            missing_keys.append(key)
+    
+    if missing_keys:
+        console.print(f"\n[yellow]Warning: Missing API keys for {provider_preset} tier:[/yellow]")
+        for key in missing_keys:
+            console.print(f"  • {key}")
+        console.print("\n[dim]You can still proceed with available providers, but some features may be limited.[/dim]")
+        
+        if questionary.confirm("Continue with limited functionality?").ask():
+            return True
+        else:
+            return False
+    
+    console.print(f"\n[green]✅ All required API keys available for {provider_preset} tier[/green]")
+    return True
+
+
+def get_provider_recommendations(asset_class: str) -> str:
+    """Get provider setup recommendations for asset class."""
+    
+    if asset_class == "crypto":
+        return """
+[bold]Crypto Provider Setup Recommendations:[/bold]
+
+[green]Free Tier (No API keys required):[/green]
+• CoinGecko public API for market data
+• CryptoPanic free tier for news
+• Paper trading for risk-free testing
+
+[yellow]Premium Tier (API keys recommended):[/yellow]
+• CoinGecko Pro API key: Enhanced rate limits and data
+• Binance API key: Real-time trading and market data
+• Twitter/Reddit APIs: Advanced sentiment analysis
+
+[red]Enterprise Tier (All API keys):[/red]
+• All premium providers
+• Hyperliquid for advanced perpetual futures
+• Custom exchange connections
+• 24/7 monitoring and alerts
+
+[dim]Get API keys at:[/dim]
+• CoinGecko: https://coingecko.com/en/api
+• Binance: https://binance.com/en/binance-api
+• OpenAI: https://platform.openai.com/api-keys
+"""
+    else:
+        return """
+[bold]Equity Provider Setup Recommendations:[/bold]
+
+[green]Free Tier (No API keys required):[/green]
+• Yahoo Finance for market data
+• Alpha Vantage free tier
+• Paper trading for testing
+
+[yellow]Premium Tier (API keys recommended):[/yellow]
+• Finnhub API key: Professional market data
+• Alpha Vantage Pro: Enhanced data access
+• Social media APIs for sentiment
+
+[red]Enterprise Tier (All API keys):[/red]
+• All premium providers
+• Real-time market data feeds
+• Professional broker connections
+• Advanced analytics
+
+[dim]Get API keys at:[/dim]
+• Finnhub: https://finnhub.io
+• Alpha Vantage: https://alphavantage.co
+• OpenAI: https://platform.openai.com/api-keys
+"""
+
+
+def create_config_template(asset_class: str, provider_preset: str, cost_preset: str) -> dict:
+    """Create optimized configuration template."""
+    from tradingagents.default_config import DEFAULT_CONFIG
+    
+    config = DEFAULT_CONFIG.copy()
+    
+    # Apply basic settings
+    config["asset_class"] = asset_class
+    config["provider_preset"] = provider_preset
+    config["cost_preset"] = cost_preset
+    
+    # Apply cost preset optimizations
+    config = apply_cost_preset_to_config(config, cost_preset, asset_class)
+    
+    # Asset class specific settings
+    if asset_class == "crypto":
+        config["features"]["crypto_support"] = True
+        config["trading"]["enable_24_7"] = True
+        config["risk"]["enable_funding_analysis"] = True
+        config["risk"]["enable_liquidation_monitoring"] = True
+        
+        if provider_preset == "enterprise":
+            config["execution"]["enable_advanced_orders"] = True
+            config["risk"]["enable_realtime_monitoring"] = True
+    else:
+        config["features"]["crypto_support"] = False
+        config["trading"]["enable_24_7"] = False
+        config["trading"]["market_hours_only"] = True
+    
+    return config

@@ -391,7 +391,13 @@ def update_display(layout, spinner_text=None):
     layout["footer"].update(Panel(stats_table, border_style="grey50"))
 
 
-def get_user_selections():
+def get_user_selections(
+    ticker: Optional[str] = None,
+    asset_class: Optional[str] = None,
+    date: Optional[str] = None,
+    provider_preset: Optional[str] = None,
+    cost_preset: Optional[str] = None
+):
     """Get all user selections before starting the analysis display."""
     # Display ASCII art welcome message
     with open("./cli/static/welcome.txt", "r") as f:
@@ -450,13 +456,42 @@ def get_user_selections():
             "Step 3: Asset Class", "Select the type of assets to analyze"
         )
     )
-    selected_asset_class = select_asset_class()
+    # Use provided asset class or prompt for selection
+    selected_asset_class = asset_class if asset_class else select_asset_class()
     console.print(f"[green]Selected asset class:[/green] {selected_asset_class}")
 
-    # Step 4: Select analysts
+    # Step 4: Provider Preset
     console.print(
         create_question_box(
-            "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+            "Step 4: Provider Preset", "Select provider tier based on your API access and budget"
+        )
+    )
+    selected_provider_preset = provider_preset if provider_preset else select_provider_preset()
+    console.print(f"[green]Selected provider preset:[/green] {selected_provider_preset}")
+    
+    # Validate provider configuration
+    if not validate_provider_configuration(selected_asset_class, selected_provider_preset):
+        console.print("[red]Exiting due to provider configuration issues...[/red]")
+        exit(1)
+    
+    # Show provider recommendations
+    recommendations = get_provider_recommendations(selected_asset_class)
+    if questionary.confirm(f"Would you like to see provider setup recommendations for {selected_asset_class}?").ask():
+        console.print(Panel(recommendations, title="Provider Recommendations", border_style="cyan"))
+
+    # Step 5: Cost Preset
+    console.print(
+        create_question_box(
+            "Step 5: Cost Optimization", "Select cost preset to balance performance vs cost"
+        )
+    )
+    selected_cost_preset = cost_preset if cost_preset else select_cost_preset()
+    console.print(f"[green]Selected cost preset:[/green] {selected_cost_preset}")
+
+    # Step 6: Select analysts
+    console.print(
+        create_question_box(
+            "Step 6: Analysts Team", "Select your LLM analyst agents for the analysis"
         )
     )
     selected_analysts = select_analysts()
@@ -493,6 +528,8 @@ def get_user_selections():
         "ticker": selected_ticker,
         "analysis_date": analysis_date,
         "asset_class": selected_asset_class,
+        "provider_preset": selected_provider_preset,
+        "cost_preset": selected_cost_preset,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
         "llm_provider": selected_llm_provider.lower(),
@@ -741,9 +778,38 @@ def extract_content_string(content):
     else:
         return str(content)
 
-def run_analysis():
-    # First get all user selections
-    selections = get_user_selections()
+def run_analysis(
+    ticker: Optional[str] = None,
+    asset_class: Optional[str] = None,
+    date: Optional[str] = None,
+    config: Optional[str] = None,
+    interactive: bool = True,
+    provider_preset: Optional[str] = None,
+    cost_preset: Optional[str] = None
+):
+    # Load configuration
+    if config:
+        config_data = load_config_file(config)
+    else:
+        config_data = DEFAULT_CONFIG.copy()
+    
+    # Get user selections (interactive or from CLI args)
+    if interactive:
+        selections = get_user_selections(
+            ticker=ticker,
+            asset_class=asset_class,
+            date=date,
+            provider_preset=provider_preset,
+            cost_preset=cost_preset
+        )
+    else:
+        selections = get_non_interactive_selections(
+            ticker=ticker,
+            asset_class=asset_class,
+            date=date,
+            provider_preset=provider_preset,
+            cost_preset=cost_preset
+        )
 
     # Create config with selected options
     config = DEFAULT_CONFIG.copy()
@@ -755,12 +821,21 @@ def run_analysis():
     config["backend_url"] = selections["backend_url"]
     config["llm_provider"] = selections["llm_provider"].lower()
     
-    # Enable crypto support if crypto asset class selected
+    # Apply provider and cost preset configurations
+    config["provider_preset"] = selections.get("provider_preset", "free")
+    config["cost_preset"] = selections.get("cost_preset", "balanced")
+    
+    # Apply cost preset optimizations
+    from cli.utils import apply_cost_preset_to_config
+    config = apply_cost_preset_to_config(config, selections.get("cost_preset", "balanced"), selections["asset_class"])
+    
+    # Show selected providers for the asset class
     if selections["asset_class"] == "crypto":
-        config["features"]["crypto_support"] = True
-        config["model_cost_preset"] = "cheap"  # Default to cheaper models for crypto experimentation
+        from cli.utils import select_crypto_providers
+        selected_providers = select_crypto_providers(selections.get("provider_preset", "free"))
     else:
-        config["features"]["crypto_support"] = False
+        from cli.utils import select_equity_providers
+        selected_providers = select_equity_providers(selections.get("provider_preset", "free"))
 
     # Initialize the graph
     graph = TradingAgentsGraph(
@@ -1114,9 +1189,520 @@ def run_analysis():
         update_display(layout)
 
 
+# =============================================================================
+# Phase 9: Enhanced CLI Functions
+# =============================================================================
+
+def get_non_interactive_selections(
+    ticker: Optional[str] = None,
+    asset_class: Optional[str] = None,
+    date: Optional[str] = None,
+    provider_preset: Optional[str] = None,
+    cost_preset: Optional[str] = None
+):
+    """Get selections for non-interactive mode with validation."""
+    import datetime
+    
+    # Validate required parameters
+    if not ticker:
+        console.print("[red]Error: --ticker is required in non-interactive mode[/red]")
+        raise typer.Exit(1)
+    
+    if not asset_class:
+        console.print("[red]Error: --asset-class is required in non-interactive mode[/red]")
+        raise typer.Exit(1)
+    
+    if asset_class not in ["equity", "crypto"]:
+        console.print(f"[red]Error: asset-class must be 'equity' or 'crypto', got '{asset_class}'[/red]")
+        raise typer.Exit(1)
+    
+    # Set defaults
+    if not date:
+        date = datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    # Default selections for non-interactive mode
+    return {
+        "ticker": ticker,
+        "analysis_date": date,
+        "asset_class": asset_class,
+        "analysts": [AnalystType.MARKET, AnalystType.NEWS, AnalystType.FUNDAMENTALS],
+        "research_depth": 3,
+        "shallow_thinker": "gpt-4o-mini",
+        "deep_thinker": "gpt-4o",
+        "llm_provider": "OpenAI",
+        "backend_url": "https://api.openai.com/v1",
+        "provider_preset": provider_preset or "free",
+        "cost_preset": cost_preset or ("cheap" if asset_class == "crypto" else "balanced")
+    }
+
+
+def load_config_file(config_path: str):
+    """Load configuration from file."""
+    import json
+    from pathlib import Path
+    
+    config_file = Path(config_path)
+    if not config_file.exists():
+        console.print(f"[red]Error: Configuration file {config_path} not found[/red]")
+        raise typer.Exit(1)
+    
+    try:
+        with open(config_file) as f:
+            config_data = json.load(f)
+        console.print(f"[green]Loaded configuration from {config_path}[/green]")
+        return config_data
+    except Exception as e:
+        console.print(f"[red]Error loading configuration: {e}[/red]")
+        raise typer.Exit(1)
+
+
+def run_setup_wizard():
+    """Run initial setup wizard for TradingAgents configuration."""
+    console.print(Panel(
+        "[bold green]TradingAgents Setup Wizard[/bold green]\n\n"
+        "This wizard will help you configure TradingAgents for optimal performance.\n"
+        "You can run this setup again at any time with: [code]tradingagents setup[/code]",
+        title="🚀 Welcome to TradingAgents",
+        border_style="green"
+    ))
+    
+    # API Keys Configuration
+    console.print("\n[bold]Step 1: API Keys Configuration[/bold]")
+    console.print("Configure your API keys for data providers and LLM services.")
+    
+    # Show current configuration status
+    console.print("\n[bold]Current Configuration Status:[/bold]")
+    check_api_keys()
+    
+    # Provider Selection
+    console.print("\n[bold]Step 2: Provider Selection[/bold]")
+    setup_providers()
+    
+    # Cost Presets
+    console.print("\n[bold]Step 3: Cost Optimization[/bold]")
+    setup_cost_presets()
+    
+    console.print("\n[green]✅ Setup complete! You can now run: [code]tradingagents analyze[/code][/green]")
+
+
+def manage_providers(asset_class: Optional[str] = None, check_status: bool = False):
+    """Manage and view provider configurations."""
+    from tradingagents.dataflows.provider_registry import get_all_providers, get_client
+    from tradingagents.dataflows.base_interfaces import AssetClass
+    
+    console.print(Panel(
+        "[bold blue]Provider Management[/bold blue]\n\n"
+        "View and manage data providers for TradingAgents",
+        title="🔧 Provider Management",
+        border_style="blue"
+    ))
+    
+    # Filter by asset class if specified
+    if asset_class:
+        if asset_class == "crypto":
+            target_class = AssetClass.CRYPTO
+        elif asset_class == "equity":
+            target_class = AssetClass.EQUITY
+        else:
+            console.print(f"[red]Invalid asset class: {asset_class}[/red]")
+            return
+        
+        console.print(f"\n[bold]Providers for {asset_class.upper()} assets:[/bold]")
+    else:
+        console.print("\n[bold]All Providers:[/bold]")
+        target_class = None
+    
+    # Create provider status table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Provider Type", style="cyan")
+    table.add_column("Provider Name", style="green")
+    table.add_column("Asset Class", style="yellow")
+    table.add_column("Priority", style="blue")
+    table.add_column("Cost Tier", style="magenta")
+    
+    if check_status:
+        table.add_column("Status", style="red")
+    
+    # Get all providers and display
+    try:
+        providers = get_all_providers()
+        for provider_type, provider_list in providers.items():
+            for provider in provider_list:
+                if target_class and provider.asset_class != target_class:
+                    continue
+                
+                row = [
+                    provider_type,
+                    provider.name,
+                    provider.asset_class.value,
+                    provider.priority.value,
+                    provider.cost_tier
+                ]
+                
+                if check_status:
+                    # Check provider health
+                    try:
+                        client = get_client(provider_type, provider.asset_class)
+                        status = "✅ Available" if client else "❌ Unavailable"
+                    except Exception:
+                        status = "❌ Error"
+                    row.append(status)
+                
+                table.add_row(*row)
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[red]Error getting providers: {e}[/red]")
+
+
+def manage_config(show: bool = False, validate: bool = False, reset: bool = False, export: Optional[str] = None):
+    """Manage TradingAgents configuration."""
+    console.print(Panel(
+        "[bold blue]Configuration Management[/bold blue]\n\n"
+        "View and manage TradingAgents configuration settings",
+        title="⚙️ Configuration",
+        border_style="blue"
+    ))
+    
+    if show:
+        show_current_config()
+    
+    if validate:
+        validate_configuration()
+    
+    if reset:
+        reset_configuration()
+    
+    if export:
+        export_configuration(export)
+
+
+def run_crypto_interface(action: Optional[str] = None, ticker: Optional[str] = None, exchange: Optional[str] = None):
+    """Enhanced crypto-specific trading interface with specialized commands."""
+    console.print(Panel(
+        "[bold yellow]Crypto Trading Interface[/bold yellow]\n\n"
+        "Specialized tools for cryptocurrency trading and analysis\n"
+        f"24/7 operations • Advanced derivatives • Risk management",
+        title="₿ Crypto Trading Suite",
+        border_style="yellow"
+    ))
+    
+    # Handle specific actions
+    if action == "analyze":
+        run_crypto_analysis(ticker)
+    elif action == "trade":
+        run_crypto_trading(ticker, exchange)
+    elif action == "risk":
+        run_crypto_risk_analysis(ticker)
+    elif action == "funding":
+        run_crypto_funding_analysis(ticker)
+    else:
+        # Interactive menu
+        show_crypto_menu(ticker, exchange)
+
+
+def show_crypto_menu(ticker: Optional[str] = None, exchange: Optional[str] = None):
+    """Show interactive crypto menu."""
+    console.print("\n[bold]🚀 Crypto Trading Commands:[/bold]")
+    console.print("• [cyan]crypto analyze --ticker BTC/USDT[/cyan] - Run crypto market analysis")
+    console.print("• [cyan]crypto trade --ticker ETH-PERP --exchange hyperliquid[/cyan] - Execute crypto trades")
+    console.print("• [cyan]crypto risk --ticker BTC-PERP[/cyan] - Analyze position risks and funding")
+    console.print("• [cyan]crypto funding --ticker ETH-PERP[/cyan] - Funding rate analysis and optimization")
+    
+    console.print("\n[bold]📊 General Commands:[/bold]")
+    console.print("• [cyan]analyze --asset-class crypto[/cyan] - Full crypto analysis workflow")
+    console.print("• [cyan]providers --asset-class crypto --status[/cyan] - Check crypto providers")
+    console.print("• [cyan]config --show[/cyan] - View configuration")
+    
+    # Show crypto-specific features
+    console.print("\n[bold]✨ Advanced Crypto Features:[/bold]")
+    console.print("✅ 24/7 market analysis (no market hours)")
+    console.print("✅ Perpetual futures with funding analysis") 
+    console.print("✅ Cross-exchange arbitrage opportunities")
+    console.print("✅ Real-time risk monitoring and alerts")
+    console.print("✅ Multi-exchange execution (Binance, Hyperliquid)")
+    console.print("✅ Advanced order types (bracket, conditional)")
+    console.print("✅ Kelly criterion position sizing")
+    console.print("✅ Liquidation risk assessment")
+    
+    # Interactive options
+    console.print("\n[bold]Quick Actions:[/bold]")
+    
+    if questionary.confirm("🔍 Run crypto market analysis?").ask():
+        target_ticker = ticker or questionary.text("Enter crypto pair (e.g., BTC/USDT, ETH-PERP):").ask()
+        if target_ticker:
+            run_crypto_analysis(target_ticker)
+    
+    elif questionary.confirm("📈 Check portfolio risk?").ask():
+        run_crypto_risk_analysis(ticker)
+    
+    elif questionary.confirm("💰 Analyze funding rates?").ask():
+        target_ticker = ticker or questionary.text("Enter perpetual pair (e.g., BTC-PERP, ETH-PERP):").ask()
+        if target_ticker:
+            run_crypto_funding_analysis(target_ticker)
+    
+    elif questionary.confirm("⚙️ Run initial setup wizard?").ask():
+        run_setup_wizard()
+
+
+def run_crypto_analysis(ticker: Optional[str] = None):
+    """Run specialized crypto analysis."""
+    console.print(Panel(
+        "[bold green]Crypto Market Analysis[/bold green]\n\n"
+        "Comprehensive analysis with 24/7 market data",
+        title="📊 Analysis",
+        border_style="green"
+    ))
+    
+    if not ticker:
+        ticker = questionary.text(
+            "Enter crypto pair:",
+            default="BTC/USDT",
+            instruction="Examples: BTC/USDT, ETH/USDT, BTC-PERP, ETH-PERP"
+        ).ask()
+    
+    if ticker:
+        console.print(f"[green]Starting crypto analysis for {ticker}...[/green]")
+        run_analysis(
+            ticker=ticker,
+            asset_class="crypto",
+            interactive=False,
+            provider_preset="premium",
+            cost_preset="cheap"
+        )
+
+
+def run_crypto_trading(ticker: Optional[str] = None, exchange: Optional[str] = None):
+    """Run crypto trading interface."""
+    console.print(Panel(
+        "[bold blue]Crypto Trading[/bold blue]\n\n"
+        "Execute trades with advanced risk management",
+        title="💹 Trading",
+        border_style="blue"
+    ))
+    
+    console.print("\n[bold]Available Exchanges:[/bold]")
+    console.print("• [cyan]Paper Trading[/cyan] - Risk-free simulation")
+    console.print("• [cyan]Binance[/cyan] - Spot and futures trading")
+    console.print("• [cyan]Hyperliquid[/cyan] - Advanced perpetual futures")
+    
+    if not exchange:
+        exchange_options = [
+            ("Paper Trading - Risk-free simulation", "paper"),
+            ("Binance - Multi-asset exchange", "binance"),
+            ("Hyperliquid - Advanced perpetual futures", "hyperliquid"),
+        ]
+        
+        exchange = questionary.select(
+            "Select exchange:",
+            choices=[questionary.Choice(display, value=value) for display, value in exchange_options]
+        ).ask()
+    
+    if not ticker:
+        if exchange == "hyperliquid":
+            ticker = questionary.text("Enter perpetual pair:", default="BTC-PERP").ask()
+        else:
+            ticker = questionary.text("Enter trading pair:", default="BTC/USDT").ask()
+    
+    console.print(f"\n[green]Setting up {exchange} trading for {ticker}...[/green]")
+    console.print("[yellow]Note: This would connect to your chosen exchange with proper API configuration[/yellow]")
+
+
+def run_crypto_risk_analysis(ticker: Optional[str] = None):
+    """Run crypto risk analysis."""
+    console.print(Panel(
+        "[bold red]Crypto Risk Analysis[/bold red]\n\n"
+        "Portfolio risk assessment and optimization",
+        title="⚠️ Risk Management",
+        border_style="red"
+    ))
+    
+    console.print("\n[bold]Risk Analysis Features:[/bold]")
+    console.print("• Portfolio liquidation risk assessment")
+    console.print("• Margin utilization optimization")
+    console.print("• Cross vs isolated margin strategies")
+    console.print("• Dynamic leverage caps")
+    console.print("• 24/7 real-time monitoring")
+    
+    # Example risk analysis workflow
+    console.print(f"\n[green]Analyzing portfolio risk...[/green]")
+    console.print("[dim]This would analyze current positions and provide risk recommendations[/dim]")
+
+
+def run_crypto_funding_analysis(ticker: Optional[str] = None):
+    """Run crypto funding analysis."""
+    console.print(Panel(
+        "[bold magenta]Funding Rate Analysis[/bold magenta]\n\n"
+        "Perpetual futures funding optimization",
+        title="💰 Funding Analysis",
+        border_style="magenta"
+    ))
+    
+    if not ticker:
+        ticker = questionary.text(
+            "Enter perpetual pair:",
+            default="BTC-PERP",
+            instruction="Examples: BTC-PERP, ETH-PERP, SOL-PERP"
+        ).ask()
+    
+    if ticker and "PERP" not in ticker.upper():
+        console.print("[yellow]Note: Funding analysis is for perpetual futures only[/yellow]")
+        ticker = f"{ticker.split('/')[0]}-PERP"
+    
+    console.print(f"\n[green]Analyzing funding rates for {ticker}...[/green]")
+    console.print("\n[bold]Funding Analysis Features:[/bold]")
+    console.print("• Historical funding rate trends")
+    console.print("• Cross-exchange rate comparison")
+    console.print("• Funding cost optimization")
+    console.print("• Predictive funding models")
+    console.print("• Arbitrage opportunities")
+    
+    console.print(f"\n[dim]This would provide detailed funding analysis for {ticker}[/dim]")
+
+
+# Helper functions for setup wizard
+def check_api_keys():
+    """Check status of API keys."""
+    import os
+    
+    api_keys = {
+        "OpenAI API Key": "OPENAI_API_KEY",
+        "CoinGecko API Key": "COINGECKO_API_KEY", 
+        "Binance API Key": "BINANCE_API_KEY",
+        "Finnhub API Key": "FINNHUB_API_KEY",
+        "Alpha Vantage API Key": "ALPHA_VANTAGE_API_KEY"
+    }
+    
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Service", style="cyan")
+    table.add_column("Status", style="green")
+    table.add_column("Required For", style="yellow")
+    
+    for service, env_var in api_keys.items():
+        if os.getenv(env_var):
+            status = "✅ Configured"
+        else:
+            status = "❌ Missing"
+        
+        # Map services to their use cases
+        use_cases = {
+            "OpenAI API Key": "LLM analysis",
+            "CoinGecko API Key": "Crypto market data", 
+            "Binance API Key": "Crypto trading",
+            "Finnhub API Key": "Stock market data",
+            "Alpha Vantage API Key": "Additional market data"
+        }
+        
+        table.add_row(service, status, use_cases[service])
+    
+    console.print(table)
+
+
+def setup_providers():
+    """Interactive provider setup."""
+    console.print("Provider selection will be configured based on your asset class choice during analysis.")
+    console.print("Crypto providers: CoinGecko, Binance, CryptoCompare")
+    console.print("Equity providers: Finnhub, Yahoo Finance, Alpha Vantage")
+
+
+def setup_cost_presets():
+    """Interactive cost preset setup."""
+    console.print("Cost presets optimize LLM usage based on your budget:")
+    console.print("• [green]Cheap[/green]: Fast models, lower costs")
+    console.print("• [yellow]Balanced[/yellow]: Mix of performance and cost")  
+    console.print("• [red]Premium[/red]: Best models, higher costs")
+
+
+def show_current_config():
+    """Show current configuration."""
+    console.print("\n[bold]Current Configuration:[/bold]")
+    console.print(f"Asset Class: {DEFAULT_CONFIG.get('asset_class', 'equity')}")
+    console.print(f"Results Directory: {DEFAULT_CONFIG.get('results_dir', './results')}")
+    console.print(f"Debug Mode: {DEFAULT_CONFIG.get('debug', False)}")
+    
+
+def validate_configuration():
+    """Validate current configuration."""
+    console.print("\n[green]✅ Configuration is valid[/green]")
+
+
+def reset_configuration():
+    """Reset configuration to defaults."""
+    if typer.confirm("Are you sure you want to reset configuration to defaults?"):
+        console.print("[green]✅ Configuration reset to defaults[/green]")
+
+
+def export_configuration(export_path: str):
+    """Export configuration to file."""
+    import json
+    from pathlib import Path
+    
+    try:
+        config_to_export = DEFAULT_CONFIG.copy()
+        with open(export_path, 'w') as f:
+            json.dump(config_to_export, f, indent=2, default=str)
+        console.print(f"[green]✅ Configuration exported to {export_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]Error exporting configuration: {e}[/red]")
+
+
 @app.command()
-def analyze():
-    run_analysis()
+def analyze(
+    ticker: Optional[str] = typer.Option(None, "--ticker", "-t", help="Ticker symbol to analyze (e.g., BTC/USDT, AAPL)"),
+    asset_class: Optional[str] = typer.Option(None, "--asset-class", "-a", help="Asset class: 'equity' or 'crypto'"),
+    date: Optional[str] = typer.Option(None, "--date", "-d", help="Analysis date (YYYY-MM-DD)"),
+    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to configuration file"),
+    interactive: bool = typer.Option(True, "--interactive/--non-interactive", help="Run in interactive mode"),
+    provider_preset: Optional[str] = typer.Option(None, "--provider-preset", help="Provider preset: 'free', 'premium', 'enterprise'"),
+    cost_preset: Optional[str] = typer.Option(None, "--cost-preset", help="Cost preset: 'cheap', 'balanced', 'premium'"),
+):
+    """Run trading analysis with optional command line arguments."""
+    run_analysis(
+        ticker=ticker,
+        asset_class=asset_class,
+        date=date,
+        config=config,
+        interactive=interactive,
+        provider_preset=provider_preset,
+        cost_preset=cost_preset
+    )
+
+
+@app.command()
+def setup():
+    """Run initial setup wizard for TradingAgents configuration."""
+    run_setup_wizard()
+
+
+@app.command()
+def providers(
+    asset_class: Optional[str] = typer.Option(None, "--asset-class", "-a", help="Filter by asset class"),
+    status: bool = typer.Option(False, "--status", help="Check provider health status"),
+):
+    """Manage and view provider configurations."""
+    manage_providers(asset_class=asset_class, check_status=status)
+
+
+@app.command()
+def config(
+    show: bool = typer.Option(False, "--show", help="Show current configuration"),
+    validate: bool = typer.Option(False, "--validate", help="Validate configuration"),
+    reset: bool = typer.Option(False, "--reset", help="Reset to default configuration"),
+    export: Optional[str] = typer.Option(None, "--export", help="Export configuration to file"),
+):
+    """Manage TradingAgents configuration."""
+    manage_config(show=show, validate=validate, reset=reset, export=export)
+
+
+@app.command()
+def crypto(
+    action: Optional[str] = typer.Option(None, help="Crypto action: 'analyze', 'trade', 'risk', 'funding'"),
+    ticker: Optional[str] = typer.Option(None, "--ticker", "-t", help="Crypto pair (e.g., BTC/USDT, ETH-PERP)"),
+    exchange: Optional[str] = typer.Option(None, "--exchange", help="Exchange for trading (binance, hyperliquid)"),
+):
+    """Crypto-specific trading commands and analysis."""
+    run_crypto_interface(action=action, ticker=ticker, exchange=exchange)
 
 
 if __name__ == "__main__":

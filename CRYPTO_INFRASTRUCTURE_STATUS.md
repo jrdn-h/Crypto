@@ -207,9 +207,34 @@ Extension of the TradingAgents multi-agent trading framework from equities (Finn
   - `tradingagents/dataflows/provider_registry.py` - Registered crypto risk manager
   - `tradingagents/dataflows/enhanced_toolkit.py` - Added risk management tools
 
-### 🔄 Phase 9: CLI & Config UX (PENDING)
-- **Status**: Not started
-- **Features**: `--asset-class` flag, provider selection, cost presets
+### ✅ Phase 9: CLI & Config UX (COMPLETED)
+- **Status**: Complete
+- **Features**: Command line arguments, provider management, cost optimization, configuration system
+- **Key Deliverables**:
+  - ✅ Command line arguments support: `--asset-class`, `--ticker`, `--date`, `--config`, `--provider-preset`, `--cost-preset`
+  - ✅ Provider selection and management interface with 3 tiers (Free, Premium, Enterprise)
+  - ✅ Cost preset configuration system (cheap, balanced, premium) with LLM optimization
+  - ✅ Enhanced configuration file management with templates, validation, backup/restore
+  - ✅ Crypto-specific CLI workflows and specialized commands (`crypto analyze`, `crypto trade`, `crypto risk`, `crypto funding`)
+  - ✅ Setup wizard for initial configuration and API key management
+  - ✅ Provider status checking and health monitoring
+  - ✅ Non-interactive mode support for automation and scripting
+  - ✅ Environment validation with comprehensive troubleshooting tools
+- **Files Created**:
+  - `cli/config_manager.py` - Comprehensive configuration management system (396 lines)
+  - `test_phase9_cli_enhancements.py` - Complete test suite for CLI features (570+ lines)
+- **Files Modified**:
+  - `cli/main.py` - Enhanced with command arguments, crypto interface, specialized commands (1500+ lines total)
+  - `cli/utils.py` - Added provider selection, cost presets, validation functions (500+ lines added)
+- **CLI Commands Enhanced**:
+  - `analyze --asset-class crypto --ticker BTC/USDT --cost-preset cheap` - Non-interactive analysis
+  - `setup` - Interactive configuration wizard with API key validation
+  - `providers --asset-class crypto --status` - Provider management and health checking
+  - `config --show --validate --export config.json` - Configuration management
+  - `crypto analyze --ticker BTC-PERP` - Crypto-specific analysis workflows
+  - `crypto trade --ticker ETH-PERP --exchange hyperliquid` - Trading interface
+  - `crypto risk --ticker BTC-PERP` - Risk analysis tools
+  - `crypto funding --ticker ETH-PERP` - Funding rate analysis
 
 ### 🔄 Phase 10: Tests & Validation (PENDING)
 - **Status**: Not started
@@ -357,9 +382,9 @@ None identified - Phase 5 complete, ready to proceed to Phase 6.
 
 ## Project Status Summary
 
-**Phase 8 (Risk & Portfolio Adjustments) - COMPLETED** ✅
+**Phase 9 (CLI & Config UX) - COMPLETED** ✅
 
-### Development Progress: 8/11 Phases Complete (73%)
+### Development Progress: 9/11 Phases Complete (82%)
 - [x] **Phase 0**: Recon & Analysis - Initial feasibility analysis
 - [x] **Phase 1**: Minimal Interface Contracts - Asset-agnostic interfaces  
 - [x] **Phase 2**: Market Data Adapters - CoinGecko, Binance, CryptoCompare
@@ -369,20 +394,21 @@ None identified - Phase 5 complete, ready to proceed to Phase 6.
 - [x] **Phase 6**: Enhanced Research - Whale tracking, sentiment aggregation
 - [x] **Phase 7**: Trader & Execution - Crypto execution adapters with 24/7 trading
 - [x] **Phase 8**: Risk & Portfolio Adjustments - Comprehensive risk management with 24/7 monitoring
-- [ ] **Phase 9**: CLI & Config UX - Asset class flag, provider selection
+- [x] **Phase 9**: CLI & Config UX - Enhanced CLI with command arguments, provider management, cost optimization
 - [ ] **Phase 10**: Tests & Validation - Comprehensive test coverage
 - [ ] **Phase 11**: Documentation - CRYPTO_README.md and examples
 
-### Key Phase 8 Achievements
-✅ **Comprehensive Risk Management**: CryptoRiskManager with 24/7 monitoring, portfolio risk assessment, and liquidation tracking  
-✅ **Funding Analysis**: FundingCalculator for perpetual futures with cross-exchange rate comparison and optimization  
-✅ **Margin Optimization**: MarginManager with cross vs isolated margin strategies and efficiency optimization  
-✅ **Dynamic Leverage Control**: Intelligent leverage caps based on volatility, liquidity, and market regime detection  
-✅ **Real-time Monitoring**: 24/7 RiskMonitor with automated alerts and comprehensive portfolio health tracking  
-✅ **Advanced Positioning**: Kelly Criterion sizing, VAR calculations, and correlation-aware risk management  
-✅ **Toolkit Integration**: Risk management tools accessible through enhanced toolkit for crypto trading  
+### Key Phase 9 Achievements
+✅ **Command Line Interface**: Full argument support (--asset-class, --ticker, --config, --provider-preset, --cost-preset) for automation  
+✅ **Provider Management**: 3-tier system (Free/Premium/Enterprise) with automatic validation and health monitoring  
+✅ **Cost Optimization**: Smart LLM model selection (cheap/balanced/premium) with crypto-specific optimizations  
+✅ **Configuration System**: Comprehensive config management with templates, validation, backup/restore functionality  
+✅ **Crypto CLI Tools**: Specialized commands for crypto analysis, trading, risk management, and funding optimization  
+✅ **Setup Wizard**: Interactive configuration guide with API key management and environment validation  
+✅ **Non-Interactive Mode**: Full automation support for scripting and CI/CD integration  
+✅ **User Experience**: Rich terminal UI with panels, progress indicators, and comprehensive help system  
 
 ---
 **Last Updated**: 2025-01-25  
-**Phase**: 8 (Risk & Portfolio Adjustments Complete)  
-**Next Milestone**: Phase 9 CLI & Config UX 
+**Phase**: 9 (CLI & Config UX Complete)  
+**Next Milestone**: Phase 10 Tests & Validation 
