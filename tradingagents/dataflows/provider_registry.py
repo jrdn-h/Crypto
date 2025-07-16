@@ -349,28 +349,54 @@ def register_default_crypto_providers() -> None:
     except ImportError as e:
         logger.warning(f"Failed to import crypto fundamentals clients: {e}. Crypto fundamentals will not be available.")
     
-    # News
-    register_provider("news", ProviderConfig(
-        name="cryptopanic",
-        provider_class=None,
-        asset_class=AssetClass.CRYPTO,
-        priority=ProviderPriority.PRIMARY,
-        cost_tier="free"
-    ))
+    # News (crypto sentiment and news analysis)
+    try:
+        from .crypto import CryptoPanicClient, CoinDeskClient
+        
+        register_provider("news", ProviderConfig(
+            name="cryptopanic",
+            provider_class=CryptoPanicClient,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.PRIMARY,
+            api_key_env_var="CRYPTOPANIC_API_TOKEN",
+            rate_limit_per_minute=15,
+            cost_tier="free"
+        ))
+        
+        register_provider("news", ProviderConfig(
+            name="coindesk_rss",
+            provider_class=CoinDeskClient,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.SECONDARY,
+            rate_limit_per_minute=30,
+            cost_tier="free"
+        ))
+        
+    except ImportError as e:
+        logger.warning(f"Failed to import crypto news clients: {e}. Crypto news will not be available.")
     
-    register_provider("news", ProviderConfig(
-        name="coindesk_rss",
-        provider_class=None,
-        asset_class=AssetClass.CRYPTO,
-        priority=ProviderPriority.SECONDARY,
-        cost_tier="free"
-    ))
-    
-    # Sentiment
-    register_provider("sentiment", ProviderConfig(
-        name="reddit_crypto",
-        provider_class=None,
-        asset_class=AssetClass.CRYPTO,
-        priority=ProviderPriority.PRIMARY,
-        cost_tier="free"
-    )) 
+    # Sentiment (social sentiment analysis)
+    try:
+        from .crypto import RedditCryptoClient, TwitterSentimentClient
+        
+        register_provider("sentiment", ProviderConfig(
+            name="reddit_crypto",
+            provider_class=RedditCryptoClient,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.PRIMARY,
+            rate_limit_per_minute=60,
+            cost_tier="free"
+        ))
+        
+        register_provider("sentiment", ProviderConfig(
+            name="twitter_crypto",
+            provider_class=TwitterSentimentClient,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.SECONDARY,
+            api_key_env_var="TWITTER_BEARER_TOKEN",
+            rate_limit_per_minute=15,
+            cost_tier="free"
+        ))
+        
+    except ImportError as e:
+        logger.warning(f"Failed to import crypto sentiment clients: {e}. Crypto sentiment will not be available.") 
