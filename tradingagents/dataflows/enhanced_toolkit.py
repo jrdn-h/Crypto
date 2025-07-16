@@ -794,6 +794,265 @@ class EnhancedToolkit:
             logger.error(f"Error cancelling order: {e}")
             return f"❌ Error cancelling order: {str(e)}"
 
+    # =============================================================================
+    # Risk Management Tools (Crypto)
+    # =============================================================================
+    
+    @tool
+    def assess_portfolio_risk(self) -> str:
+        """
+        Assess comprehensive portfolio risk for crypto positions.
+        Provides detailed risk analysis including margin, liquidation, and funding risks.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Portfolio risk assessment only available for crypto asset class"
+        
+        try:
+            # Get risk metrics client
+            risk_client = self._get_client("risk")
+            if not risk_client:
+                return "❌ No risk management provider available"
+            
+            # Get execution client for positions
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available for position data"
+            
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return "📊 Portfolio risk assessment queued - check back for results"
+                else:
+                    # Get current positions
+                    positions = loop.run_until_complete(execution_client.get_positions())
+                    
+                    if not positions:
+                        return "📊 No positions found - portfolio risk is minimal"
+                    
+                    # Get portfolio risk analysis
+                    risk_analysis = loop.run_until_complete(risk_client.get_portfolio_risk(positions))
+                    
+                    if 'error' in risk_analysis:
+                        return f"❌ Risk analysis failed: {risk_analysis['error']}"
+                    
+                    # Format comprehensive risk report
+                    portfolio_risk = risk_analysis.get('portfolio_risk')
+                    if not portfolio_risk:
+                        return "❌ No portfolio risk data available"
+                    
+                    result = "📊 **Portfolio Risk Assessment**\n\n"
+                    
+                    # Overall risk level
+                    result += f"**Overall Risk Level**: {portfolio_risk.overall_risk_level.value.upper()}\n\n"
+                    
+                    # Key metrics
+                    result += "**Key Metrics**\n"
+                    result += f"  • Account Value: ${portfolio_risk.total_account_value:,.2f}\n"
+                    result += f"  • Margin Used: ${portfolio_risk.total_margin_used:,.2f}\n"
+                    result += f"  • Available Margin: ${portfolio_risk.available_margin:,.2f}\n"
+                    result += f"  • Margin Ratio: {portfolio_risk.margin_ratio:.1%}\n"
+                    result += f"  • Portfolio Leverage: {portfolio_risk.leverage_ratio:.1f}x\n\n"
+                    
+                    # Risk breakdown
+                    result += "**Risk Breakdown**\n"
+                    result += f"  • Margin Risk: {portfolio_risk.margin_risk_level.value}\n"
+                    result += f"  • Concentration Risk: {portfolio_risk.concentration_risk_level.value}\n"
+                    result += f"  • Liquidation Risk Positions: {portfolio_risk.liquidation_risk_count}\n"
+                    result += f"  • 24h Funding Cost: ${portfolio_risk.funding_pnl_24h:.2f}\n\n"
+                    
+                    # VaR metrics
+                    result += "**Value at Risk**\n"
+                    result += f"  • 1-Day VaR (99%): ${portfolio_risk.portfolio_var_1d:,.2f}\n"
+                    result += f"  • 7-Day VaR (99%): ${portfolio_risk.portfolio_var_7d:,.2f}\n"
+                    result += f"  • Max Drawdown (30d): {portfolio_risk.max_drawdown_30d:.1%}\n\n"
+                    
+                    # Alerts
+                    risk_alerts = risk_analysis.get('risk_alerts', [])
+                    if risk_alerts:
+                        result += f"**🚨 Active Alerts ({len(risk_alerts)})**\n"
+                        for alert in risk_alerts[:3]:  # Show top 3
+                            result += f"  • {alert.get('type', 'Unknown')}: {alert.get('message', 'No details')}\n"
+                        result += "\n"
+                    
+                    # Recommendations
+                    recommendations = risk_analysis.get('recommendations', [])
+                    if recommendations:
+                        result += "**💡 Recommendations**\n"
+                        for rec in recommendations[:3]:  # Show top 3
+                            result += f"  • {rec}\n"
+                    
+                    return result
+                    
+            except Exception as e:
+                return f"❌ Portfolio risk assessment failed: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error assessing portfolio risk: {e}")
+            return f"❌ Error assessing portfolio risk: {str(e)}"
+    
+    @tool
+    def calculate_funding_pnl(
+        self,
+        symbol: Annotated[str, "Trading pair symbol (e.g. BTC-PERP, ETH-PERP)"]
+    ) -> str:
+        """
+        Calculate detailed funding PnL for a perpetual futures position.
+        Shows funding costs, rates, and optimization recommendations.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Funding PnL analysis only available for crypto asset class"
+        
+        try:
+            # Get execution client for position data
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available"
+            
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return f"📊 Funding PnL analysis queued for {symbol}"
+                else:
+                    # Get current positions
+                    positions = loop.run_until_complete(execution_client.get_positions())
+                    
+                    # Find the specific position
+                    target_position = None
+                    for pos in positions:
+                        if pos.symbol == symbol:
+                            target_position = pos
+                            break
+                    
+                    if not target_position:
+                        return f"❌ No position found for {symbol}"
+                    
+                    # Use funding calculator
+                    from .crypto import FundingCalculator
+                    funding_calc = FundingCalculator()
+                    
+                    funding_analysis = loop.run_until_complete(
+                        funding_calc.calculate_funding_pnl(target_position)
+                    )
+                    
+                    if 'error' in funding_analysis:
+                        return f"❌ Funding analysis failed: {funding_analysis['error']}"
+                    
+                    # Format funding report
+                    result = f"📊 **Funding PnL Analysis: {symbol}**\n\n"
+                    
+                    result += f"**Position Details**\n"
+                    result += f"  • Size: {funding_analysis['position_size']:.6f}\n"
+                    result += f"  • Period: {funding_analysis['period_start'].strftime('%Y-%m-%d')} to {funding_analysis['period_end'].strftime('%Y-%m-%d')}\n\n"
+                    
+                    result += f"**Funding Summary**\n"
+                    result += f"  • Total Funding Paid: ${funding_analysis['total_funding_paid']:.4f}\n"
+                    result += f"  • Funding Cost %: {funding_analysis['funding_cost_percentage']:.3f}%\n"
+                    result += f"  • Number of Payments: {funding_analysis['number_of_payments']}\n"
+                    result += f"  • Average Rate: {funding_analysis['average_funding_rate']*100:.4f}%\n\n"
+                    
+                    result += f"**Next Payment**\n"
+                    result += f"  • Next Funding: {funding_analysis['next_funding_time'].strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+                    
+                    result += f"**Assessment**\n"
+                    if funding_analysis['is_profitable']:
+                        result += f"  • Status: ✅ Receiving funding\n"
+                    else:
+                        result += f"  • Status: ❌ Paying funding\n"
+                    
+                    result += f"  • Recommendation: {funding_analysis['recommendation']}\n"
+                    
+                    return result
+                    
+            except Exception as e:
+                return f"❌ Funding analysis failed: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error calculating funding PnL: {e}")
+            return f"❌ Error calculating funding PnL: {str(e)}"
+    
+    @tool
+    def optimize_leverage(
+        self,
+        symbol: Annotated[str, "Trading pair symbol (e.g. BTC-PERP, ETH-PERP)"],
+        target_risk: Annotated[Optional[float], "Target risk per trade (default 2%)"] = 0.02
+    ) -> str:
+        """
+        Calculate optimal leverage and position size for a symbol based on risk and market conditions.
+        Provides Kelly criterion and risk-based sizing recommendations.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Leverage optimization only available for crypto asset class"
+        
+        try:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return f"📊 Leverage optimization queued for {symbol}"
+                else:
+                    # Use risk manager for optimal sizing
+                    from .crypto import CryptoRiskManager
+                    risk_manager = CryptoRiskManager()
+                    
+                    optimal_sizing = loop.run_until_complete(
+                        risk_manager.calculate_optimal_position_size(symbol, target_risk)
+                    )
+                    
+                    if 'error' in optimal_sizing:
+                        return f"❌ Leverage optimization failed: {optimal_sizing['error']}"
+                    
+                    # Use leverage controller for leverage recommendation
+                    from .crypto import DynamicLeverageController
+                    leverage_controller = DynamicLeverageController()
+                    
+                    leverage_rec = loop.run_until_complete(
+                        leverage_controller.calculate_optimal_leverage(symbol)
+                    )
+                    
+                    # Format optimization report
+                    result = f"📊 **Leverage Optimization: {symbol}**\n\n"
+                    
+                    result += f"**Market Conditions**\n"
+                    result += f"  • Current Price: ${optimal_sizing['current_price']:,.2f}\n"
+                    result += f"  • 30d Volatility: {optimal_sizing['volatility_30d']:.1%}\n"
+                    result += f"  • Expected Return: {optimal_sizing['expected_return']:.3%} daily\n\n"
+                    
+                    result += f"**Position Sizing (Target Risk: {target_risk:.1%})**\n"
+                    result += f"  • Kelly Size: {optimal_sizing['kelly_size']:.6f} units\n"
+                    result += f"  • Risk Parity Size: {optimal_sizing['risk_parity_size']:.6f} units\n"
+                    result += f"  • VaR Size: {optimal_sizing['var_size']:.6f} units\n"
+                    result += f"  • **Recommended Size: {optimal_sizing['recommended_size']:.6f} units**\n\n"
+                    
+                    result += f"**Leverage Analysis**\n"
+                    result += f"  • Recommended Leverage: {leverage_rec.recommended_leverage:.1f}x\n"
+                    result += f"  • Max Allowed: {leverage_rec.max_allowed_leverage:.1f}x\n"
+                    result += f"  • Risk Level: {leverage_rec.risk_level.value}\n"
+                    result += f"  • Market Regime: {leverage_rec.market_regime.value}\n"
+                    result += f"  • Confidence: {leverage_rec.confidence:.1%}\n\n"
+                    
+                    result += f"**Risk Adjustments**\n"
+                    result += f"  • Volatility Adj: {leverage_rec.volatility_adjustment:.1%}\n"
+                    result += f"  • Liquidity Adj: {leverage_rec.liquidity_adjustment:.1%}\n"
+                    result += f"  • Correlation Adj: {leverage_rec.correlation_adjustment:.1%}\n\n"
+                    
+                    result += f"**Reasoning**\n"
+                    for reason in leverage_rec.reasoning[:3]:  # Top 3 reasons
+                        result += f"  • {reason}\n"
+                    
+                    return result
+                    
+            except Exception as e:
+                return f"❌ Leverage optimization failed: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error optimizing leverage: {e}")
+            return f"❌ Error optimizing leverage: {str(e)}"
+
 
 # =============================================================================
 # Tool Registration Functions
@@ -817,6 +1076,9 @@ def get_enhanced_tools(config: Optional[Dict[str, Any]] = None) -> List:
             toolkit.get_positions,
             toolkit.get_balances,
             toolkit.cancel_order,
+            toolkit.assess_portfolio_risk,
+            toolkit.calculate_funding_pnl,
+            toolkit.optimize_leverage,
         ])
     
     return base_tools

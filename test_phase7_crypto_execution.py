@@ -449,7 +449,9 @@ def run_comprehensive_tests():
     for test_class in test_classes:
         print(f"\n📋 Running {test_class.__name__}")
         suite = unittest.TestLoader().loadTestsFromTestCase(test_class)
-        runner = unittest.TextTestRunner(verbosity=0, stream=open('/dev/null', 'w'))
+        import os
+        null_device = 'nul' if os.name == 'nt' else '/dev/null'
+        runner = unittest.TextTestRunner(verbosity=0, stream=open(null_device, 'w'))
         result = runner.run(suite)
         
         class_total = result.testsRun

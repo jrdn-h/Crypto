@@ -448,4 +448,24 @@ def register_default_crypto_providers() -> None:
         ))
         
     except ImportError as e:
-        logger.warning(f"Failed to import crypto execution clients: {e}. Crypto execution will not be available.") 
+        logger.warning(f"Failed to import crypto execution clients: {e}. Crypto execution will not be available.")
+    
+    # Risk Management (crypto risk analysis and portfolio management)
+    try:
+        from .crypto import CryptoRiskManager
+        
+        register_provider("risk", ProviderConfig(
+            name="crypto_risk_manager",
+            provider_class=CryptoRiskManager,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.PRIMARY,
+            cost_tier="free",
+            init_kwargs={
+                "enable_24_7_monitoring": True,
+                "volatility_lookback_days": 30,
+                "correlation_lookback_days": 90
+            }
+        ))
+        
+    except ImportError as e:
+        logger.warning(f"Failed to import crypto risk management clients: {e}. Crypto risk management will not be available.") 

@@ -27,6 +27,13 @@ from .paper_broker import CryptoPaperBroker
 from .ccxt_broker import CCXTBroker, CCXTBrokerFactory
 from .hyperliquid_broker import HyperliquidBroker
 
+# Risk Management
+from .crypto_risk_manager import CryptoRiskManager, RiskLimits, MarginMode, RiskLevel
+from .funding_calculator import FundingCalculator, FundingPnL, FundingStats, FundingForecast
+from .margin_manager import MarginManager, MarginAllocation, MarginPool, MarginStrategy
+from .leverage_controller import DynamicLeverageController, LeverageRecommendation, MarketRegime
+from .risk_monitor import RiskMonitor, RiskAlert, AlertSeverity, AlertType, MonitoringConfig
+
 # Utilities
 from .caching import CacheManager
 from .rate_limiter import RateLimiter 
@@ -66,6 +73,28 @@ __all__ = [
     "CCXTBroker",
     "CCXTBrokerFactory",
     "HyperliquidBroker",
+    
+    # Risk Management
+    "CryptoRiskManager",
+    "RiskLimits",
+    "MarginMode",
+    "RiskLevel",
+    "FundingCalculator",
+    "FundingPnL",
+    "FundingStats",
+    "FundingForecast",
+    "MarginManager",
+    "MarginAllocation",
+    "MarginPool", 
+    "MarginStrategy",
+    "DynamicLeverageController",
+    "LeverageRecommendation",
+    "MarketRegime",
+    "RiskMonitor",
+    "RiskAlert",
+    "AlertSeverity",
+    "AlertType",
+    "MonitoringConfig",
     
     # Utilities
     "CacheManager",
