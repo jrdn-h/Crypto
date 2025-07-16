@@ -19,11 +19,11 @@ from typing import Dict, Any, List
 # Test imports
 try:
     from tradingagents.dataflows.crypto import (
-        CryptoRiskManager, RiskLimits, MarginMode, RiskLevel,
-        FundingCalculator, FundingPnL, FundingStats,
-        MarginManager, MarginAllocation, MarginStrategy,
+        CryptoRiskManager, RiskLimits, MarginMode, RiskLevel, FundingPnL,
+        FundingCalculator, FundingStats, FundingForecast,
+        MarginManager, MarginAllocation, MarginPool, MarginStrategy,
         DynamicLeverageController, LeverageRecommendation, MarketRegime,
-        RiskMonitor, RiskAlert, AlertSeverity, AlertType
+        RiskMonitor, RiskAlert, AlertSeverity, AlertType, MonitoringConfig
     )
     from tradingagents.dataflows.base_interfaces import (
         AssetClass, Position, Balance

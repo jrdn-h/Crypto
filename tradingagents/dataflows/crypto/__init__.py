@@ -28,8 +28,8 @@ from .ccxt_broker import CCXTBroker, CCXTBrokerFactory
 from .hyperliquid_broker import HyperliquidBroker
 
 # Risk Management
-from .crypto_risk_manager import CryptoRiskManager, RiskLimits, MarginMode, RiskLevel
-from .funding_calculator import FundingCalculator, FundingPnL, FundingStats, FundingForecast
+from .crypto_risk_manager import CryptoRiskManager, RiskLimits, MarginMode, RiskLevel, FundingPnL
+from .funding_calculator import FundingCalculator, FundingStats, FundingForecast
 from .margin_manager import MarginManager, MarginAllocation, MarginPool, MarginStrategy
 from .leverage_controller import DynamicLeverageController, LeverageRecommendation, MarketRegime
 from .risk_monitor import RiskMonitor, RiskAlert, AlertSeverity, AlertType, MonitoringConfig
@@ -79,8 +79,8 @@ __all__ = [
     "RiskLimits",
     "MarginMode",
     "RiskLevel",
-    "FundingCalculator",
     "FundingPnL",
+    "FundingCalculator",
     "FundingStats",
     "FundingForecast",
     "MarginManager",
