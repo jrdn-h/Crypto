@@ -73,11 +73,14 @@ class TestConfigManager(unittest.TestCase):
     
     def test_save_and_load_config(self):
         """Test saving and loading configuration."""
-        # Create test config
+        # Create test config with all required fields
         test_config = {
             "asset_class": "crypto",
             "provider_preset": "premium",
-            "cost_preset": "balanced"
+            "cost_preset": "balanced",
+            "llm_provider": "OpenAI",
+            "shallow_thinker": "gpt-4o-mini",
+            "deep_thinker": "gpt-4o"
         }
         
         # Save config
@@ -501,7 +504,7 @@ class TestPhase9Integration(unittest.TestCase):
 
 def run_comprehensive_tests():
     """Run all Phase 9 tests with summary."""
-    print("🚀 Running Phase 9 CLI & Config UX Test Suite")
+    print("Running Phase 9 CLI & Config UX Test Suite")
     print("=" * 60)
     
     test_classes = [
@@ -519,12 +522,23 @@ def run_comprehensive_tests():
     failed_tests = []
     
     for test_class in test_classes:
-        print(f"\n📋 Running {test_class.__name__}")
+        print(f"\n>> Running {test_class.__name__}")
         suite = unittest.TestLoader().loadTestsFromTestCase(test_class)
         
-        import os
-        null_device = 'nul' if os.name == 'nt' else '/dev/null'
-        runner = unittest.TextTestRunner(verbosity=0, stream=open(null_device, 'w'))
+        import io
+        import sys
+        
+        # Create a custom stream that handles encoding issues
+        class SafeStringIO(io.StringIO):
+            def write(self, s):
+                try:
+                    return super().write(s)
+                except UnicodeEncodeError:
+                    # Replace problematic characters with safe alternatives
+                    safe_s = s.encode('ascii', 'replace').decode('ascii')
+                    return super().write(safe_s)
+        
+        runner = unittest.TextTestRunner(verbosity=0, stream=SafeStringIO())
         result = runner.run(suite)
         
         class_total = result.testsRun
@@ -535,13 +549,13 @@ def run_comprehensive_tests():
         
         if result.failures or result.errors:
             failed_tests.extend([str(test) for test, _ in result.failures + result.errors])
-            print(f"   ❌ {class_passed}/{class_total} tests passed")
+            print(f"   FAILED {class_passed}/{class_total} tests passed")
             for failure in result.failures + result.errors:
-                print(f"      ⚠️  {failure[0]}")
+                print(f"      WARNING: {failure[0]}")
         else:
-            print(f"   ✅ {class_passed}/{class_total} tests passed")
+            print(f"   PASSED {class_passed}/{class_total} tests passed")
     
-    print(f"\n🎯 Phase 9 Test Summary")
+    print(f"\nPhase 9 Test Summary")
     print("=" * 30)
     print(f"Total Tests: {total_tests}")
     print(f"Passed: {passed_tests}")
@@ -549,19 +563,19 @@ def run_comprehensive_tests():
     print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
     
     if failed_tests:
-        print(f"\n❌ Failed Tests:")
+        print(f"\nFailed Tests:")
         for test in failed_tests:
-            print(f"   • {test}")
+            print(f"   - {test}")
     
-    print(f"\n📊 Phase 9 Core Components Status:")
-    print(f"   ✅ Command Line Arguments: --asset-class, --ticker, --config, --provider-preset")
-    print(f"   ✅ Provider Selection: Free, Premium, Enterprise tiers with validation")
-    print(f"   ✅ Cost Presets: Cheap, Balanced, Premium with LLM optimization")
-    print(f"   ✅ Configuration Management: Templates, validation, backup/restore")
-    print(f"   ✅ Crypto CLI Features: Specialized commands and workflows")
-    print(f"   ✅ Setup Wizard: Interactive configuration and API key management")
-    print(f"   ✅ Provider Health Checking: Status monitoring and recommendations")
-    print(f"   ✅ Environment Validation: API keys and system requirements")
+    print(f"\nPhase 9 Core Components Status:")
+    print(f"   [OK] Command Line Arguments: --asset-class, --ticker, --config, --provider-preset")
+    print(f"   [OK] Provider Selection: Free, Premium, Enterprise tiers with validation")
+    print(f"   [OK] Cost Presets: Cheap, Balanced, Premium with LLM optimization")
+    print(f"   [OK] Configuration Management: Templates, validation, backup/restore")
+    print(f"   [OK] Crypto CLI Features: Specialized commands and workflows")
+    print(f"   [OK] Setup Wizard: Interactive configuration and API key management")
+    print(f"   [OK] Provider Health Checking: Status monitoring and recommendations")
+    print(f"   [OK] Environment Validation: API keys and system requirements")
     
     return passed_tests >= total_tests * 0.65  # 65% success threshold
 
@@ -569,6 +583,6 @@ def run_comprehensive_tests():
 if __name__ == "__main__":
     success = run_comprehensive_tests()
     if success:
-        print(f"\n🎉 Phase 9 CLI & Config UX: READY FOR DEPLOYMENT")
+        print(f"\nSUCCESS: Phase 9 CLI & Config UX: READY FOR DEPLOYMENT")
     else:
-        print(f"\n⚠️  Phase 9 CLI & Config UX: NEEDS ATTENTION") 
+        print(f"\nWARNING: Phase 9 CLI & Config UX: NEEDS ATTENTION") 
