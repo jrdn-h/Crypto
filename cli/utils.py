@@ -90,6 +90,36 @@ def select_analysts() -> List[AnalystType]:
     return choices
 
 
+def select_asset_class() -> str:
+    """Select asset class using an interactive selection."""
+    
+    ASSET_CLASS_OPTIONS = [
+        ("Equity - Traditional stocks and shares (Finnhub, YFinance)", "equity"),
+        ("Crypto - Digital assets and cryptocurrencies (CoinGecko, Binance)", "crypto"),
+    ]
+    
+    choice = questionary.select(
+        "Select Your [Asset Class]:",
+        choices=[
+            questionary.Choice(display, value=value) for display, value in ASSET_CLASS_OPTIONS
+        ],
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:cyan noinherit"),
+                ("highlighted", "fg:cyan noinherit"),
+                ("pointer", "fg:cyan noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    if choice is None:
+        console.print("\n[red]No asset class selected. Exiting...[/red]")
+        exit(1)
+    
+    return choice
+
+
 def select_research_depth() -> int:
     """Select research depth using an interactive selection."""
 

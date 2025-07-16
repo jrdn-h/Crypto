@@ -111,48 +111,84 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources."""
-        return {
-            "market": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_YFin_data_online,
-                    self.toolkit.get_stockstats_indicators_report_online,
-                    # offline tools
-                    self.toolkit.get_YFin_data,
-                    self.toolkit.get_stockstats_indicators_report,
-                ]
-            ),
-            "social": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_stock_news_openai,
-                    # offline tools
-                    self.toolkit.get_reddit_stock_info,
-                ]
-            ),
-            "news": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_global_news_openai,
-                    self.toolkit.get_google_news,
-                    # offline tools
+        # Check if enhanced toolkit is enabled
+        use_enhanced = self.config.get("features", {}).get("crypto_support", False)
+        
+        if use_enhanced:
+            # Use enhanced toolkit with cross-asset support
+            from tradingagents.dataflows.enhanced_toolkit import get_enhanced_tools, get_legacy_tools
+            
+            enhanced_tools = get_enhanced_tools(self.config)
+            legacy_tools = get_legacy_tools(self.config)
+            
+            return {
+                "market": ToolNode(enhanced_tools[:1] + [  # Enhanced market data
+                    self.toolkit.get_YFin_data_online if self.config.get("online_tools") else self.toolkit.get_YFin_data,
+                    self.toolkit.get_stockstats_indicators_report_online if self.config.get("online_tools") else self.toolkit.get_stockstats_indicators_report,
+                ]),
+                "social": ToolNode([
+                    enhanced_tools[2],  # Enhanced news (can handle social)
+                    self.toolkit.get_stock_news_openai if self.config.get("online_tools") else self.toolkit.get_reddit_stock_info,
+                ]),
+                "news": ToolNode([
+                    enhanced_tools[2],  # Enhanced news
+                    self.toolkit.get_global_news_openai if self.config.get("online_tools") else self.toolkit.get_google_news,
                     self.toolkit.get_finnhub_news,
                     self.toolkit.get_reddit_news,
-                ]
-            ),
-            "fundamentals": ToolNode(
-                [
-                    # online tools
-                    self.toolkit.get_fundamentals_openai,
-                    # offline tools
-                    self.toolkit.get_finnhub_company_insider_sentiment,
+                ]),
+                "fundamentals": ToolNode([
+                    enhanced_tools[1],  # Enhanced fundamentals
+                    self.toolkit.get_fundamentals_openai if self.config.get("online_tools") else self.toolkit.get_finnhub_company_insider_sentiment,
                     self.toolkit.get_finnhub_company_insider_transactions,
                     self.toolkit.get_simfin_balance_sheet,
                     self.toolkit.get_simfin_cashflow,
                     self.toolkit.get_simfin_income_stmt,
-                ]
-            ),
-        }
+                ]),
+            }
+        else:
+            # Use legacy toolkit (backward compatibility)
+            return {
+                "market": ToolNode(
+                    [
+                        # online tools
+                        self.toolkit.get_YFin_data_online,
+                        self.toolkit.get_stockstats_indicators_report_online,
+                        # offline tools
+                        self.toolkit.get_YFin_data,
+                        self.toolkit.get_stockstats_indicators_report,
+                    ]
+                ),
+                "social": ToolNode(
+                    [
+                        # online tools
+                        self.toolkit.get_stock_news_openai,
+                        # offline tools
+                        self.toolkit.get_reddit_stock_info,
+                    ]
+                ),
+                "news": ToolNode(
+                    [
+                        # online tools
+                        self.toolkit.get_global_news_openai,
+                        self.toolkit.get_google_news,
+                        # offline tools
+                        self.toolkit.get_finnhub_news,
+                        self.toolkit.get_reddit_news,
+                    ]
+                ),
+                "fundamentals": ToolNode(
+                    [
+                        # online tools
+                        self.toolkit.get_fundamentals_openai,
+                        # offline tools
+                        self.toolkit.get_finnhub_company_insider_sentiment,
+                        self.toolkit.get_finnhub_company_insider_transactions,
+                        self.toolkit.get_simfin_balance_sheet,
+                        self.toolkit.get_simfin_cashflow,
+                        self.toolkit.get_simfin_income_stmt,
+                    ]
+                ),
+            }
 
     def propagate(self, company_name, trade_date):
         """Run the trading agents graph for a company on a specific date."""

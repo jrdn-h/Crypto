@@ -18,7 +18,10 @@ parsel
 requests
 tqdm
 pytz
-redis
+# Crypto adapter dependencies
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+redis>=4.5.0
 chainlit
 rich
 questionary

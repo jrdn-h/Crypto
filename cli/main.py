@@ -444,10 +444,19 @@ def get_user_selections():
     )
     analysis_date = get_analysis_date()
 
-    # Step 3: Select analysts
+    # Step 3: Asset Class
     console.print(
         create_question_box(
-            "Step 3: Analysts Team", "Select your LLM analyst agents for the analysis"
+            "Step 3: Asset Class", "Select the type of assets to analyze"
+        )
+    )
+    selected_asset_class = select_asset_class()
+    console.print(f"[green]Selected asset class:[/green] {selected_asset_class}")
+
+    # Step 4: Select analysts
+    console.print(
+        create_question_box(
+            "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
         )
     )
     selected_analysts = select_analysts()
@@ -455,26 +464,26 @@ def get_user_selections():
         f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
     )
 
-    # Step 4: Research depth
+    # Step 5: Research depth
     console.print(
         create_question_box(
-            "Step 4: Research Depth", "Select your research depth level"
+            "Step 5: Research Depth", "Select your research depth level"
         )
     )
     selected_research_depth = select_research_depth()
 
-    # Step 5: OpenAI backend
+    # Step 6: OpenAI backend
     console.print(
         create_question_box(
-            "Step 5: OpenAI backend", "Select which service to talk to"
+            "Step 6: LLM Provider", "Select which LLM service to use"
         )
     )
     selected_llm_provider, backend_url = select_llm_provider()
     
-    # Step 6: Thinking agents
+    # Step 7: Thinking agents
     console.print(
         create_question_box(
-            "Step 6: Thinking Agents", "Select your thinking agents for analysis"
+            "Step 7: Thinking Agents", "Select your thinking agents for analysis"
         )
     )
     selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
@@ -483,6 +492,7 @@ def get_user_selections():
     return {
         "ticker": selected_ticker,
         "analysis_date": analysis_date,
+        "asset_class": selected_asset_class,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
         "llm_provider": selected_llm_provider.lower(),
@@ -735,14 +745,22 @@ def run_analysis():
     # First get all user selections
     selections = get_user_selections()
 
-    # Create config with selected research depth
+    # Create config with selected options
     config = DEFAULT_CONFIG.copy()
+    config["asset_class"] = selections["asset_class"]
     config["max_debate_rounds"] = selections["research_depth"]
     config["max_risk_discuss_rounds"] = selections["research_depth"]
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
     config["llm_provider"] = selections["llm_provider"].lower()
+    
+    # Enable crypto support if crypto asset class selected
+    if selections["asset_class"] == "crypto":
+        config["features"]["crypto_support"] = True
+        config["model_cost_preset"] = "cheap"  # Default to cheaper models for crypto experimentation
+    else:
+        config["features"]["crypto_support"] = False
 
     # Initialize the graph
     graph = TradingAgentsGraph(
