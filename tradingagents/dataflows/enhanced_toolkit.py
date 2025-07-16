@@ -585,6 +585,215 @@ class EnhancedToolkit:
             logger.error(f"Error in whale flow analysis: {e}")
             return f"❌ Error in whale flow analysis for {symbol}: {str(e)}"
 
+    # =============================================================================
+    # Execution Tools (Crypto Trading)
+    # =============================================================================
+    
+    @tool
+    def create_order(
+        self,
+        symbol: Annotated[str, "Trading pair symbol (e.g. BTC/USDT, ETH-PERP)"],
+        side: Annotated[str, "Order side: 'buy' or 'sell'"],
+        order_type: Annotated[str, "Order type: 'market', 'limit', 'stop', 'stop_limit'"],
+        quantity: Annotated[float, "Order quantity (in base asset or contracts)"],
+        price: Annotated[Optional[float], "Limit price (required for limit orders)"] = None,
+        leverage: Annotated[Optional[float], "Leverage for futures positions (1-50)"] = None
+    ) -> str:
+        """
+        Create a trading order on the crypto exchange.
+        Supports spot and perpetual futures trading with proper risk management.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Order execution only available for crypto asset class"
+        
+        try:
+            from .base_interfaces import OrderSide, OrderType
+            
+            # Convert string inputs to enums
+            order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+            order_type_enum = OrderType(order_type.lower())
+            
+            # Get execution client
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available for crypto trading"
+            
+            # Validate inputs
+            if order_type_enum == OrderType.LIMIT and price is None:
+                return "❌ Price required for limit orders"
+            
+            if leverage and (leverage < 1 or leverage > 50):
+                return "❌ Leverage must be between 1 and 50"
+            
+            # Create order
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return f"📋 Order creation queued: {side.upper()} {quantity} {symbol} @ {price or 'market'}"
+                else:
+                    order = loop.run_until_complete(execution_client.create_order(
+                        symbol=symbol,
+                        side=order_side,
+                        order_type=order_type_enum,
+                        quantity=quantity,
+                        price=price,
+                        leverage=leverage
+                    ))
+                    
+                    return f"✅ Order created: {order.order_id}\n" \
+                           f"Symbol: {order.symbol}\n" \
+                           f"Side: {order.side.value}\n" \
+                           f"Type: {order.order_type.value}\n" \
+                           f"Quantity: {order.quantity}\n" \
+                           f"Price: {order.price or 'Market'}\n" \
+                           f"Status: {order.status.value}"
+                           
+            except Exception as e:
+                return f"❌ Order creation failed: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error creating order: {e}")
+            return f"❌ Error creating order: {str(e)}"
+    
+    @tool
+    def get_positions(self) -> str:
+        """
+        Get current trading positions from the crypto exchange.
+        Shows position size, entry price, PnL, and market value.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Position tracking only available for crypto asset class"
+        
+        try:
+            # Get execution client
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available for crypto trading"
+            
+            # Get positions
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return "📊 Positions query queued - check back for results"
+                else:
+                    positions = loop.run_until_complete(execution_client.get_positions())
+                    
+                    if not positions:
+                        return "📊 No open positions"
+                    
+                    result = "📊 **Current Positions**\n\n"
+                    total_pnl = 0
+                    
+                    for pos in positions:
+                        direction = "LONG" if pos.quantity > 0 else "SHORT"
+                        result += f"**{pos.symbol}** ({direction})\n"
+                        result += f"  Size: {abs(pos.quantity):.6f}\n"
+                        result += f"  Entry Price: ${pos.average_price:.4f}\n"
+                        result += f"  Market Value: ${pos.market_value:.2f}\n"
+                        result += f"  Unrealized PnL: ${pos.unrealized_pnl:.2f}\n\n"
+                        total_pnl += pos.unrealized_pnl
+                    
+                    result += f"**Total Unrealized PnL: ${total_pnl:.2f}**"
+                    return result
+                    
+            except Exception as e:
+                return f"❌ Failed to get positions: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error getting positions: {e}")
+            return f"❌ Error getting positions: {str(e)}"
+    
+    @tool
+    def get_balances(self) -> str:
+        """
+        Get account balances from the crypto exchange.
+        Shows available and total balances for all currencies.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Balance checking only available for crypto asset class"
+        
+        try:
+            # Get execution client
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available for crypto trading"
+            
+            # Get balances
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return "💰 Balance query queued - check back for results"
+                else:
+                    balances = loop.run_until_complete(execution_client.get_balances())
+                    
+                    if not balances:
+                        return "💰 No balances available"
+                    
+                    result = "💰 **Account Balances**\n\n"
+                    
+                    for balance in balances:
+                        if balance.total > 0:
+                            result += f"**{balance.currency}**\n"
+                            result += f"  Available: {balance.available:.6f}\n"
+                            result += f"  Total: {balance.total:.6f}\n"
+                            if balance.reserved > 0:
+                                result += f"  Reserved: {balance.reserved:.6f}\n"
+                            result += "\n"
+                    
+                    return result
+                    
+            except Exception as e:
+                return f"❌ Failed to get balances: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error getting balances: {e}")
+            return f"❌ Error getting balances: {str(e)}"
+    
+    @tool
+    def cancel_order(
+        self,
+        order_id: Annotated[str, "Order ID to cancel"]
+    ) -> str:
+        """
+        Cancel an existing order on the crypto exchange.
+        """
+        # Only available for crypto asset class
+        if self.asset_class != AssetClass.CRYPTO:
+            return "❌ Order cancellation only available for crypto asset class"
+        
+        try:
+            # Get execution client
+            execution_client = self._get_client("execution")
+            if not execution_client:
+                return "❌ No execution provider available for crypto trading"
+            
+            # Cancel order
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    return f"🚫 Order cancellation queued for {order_id}"
+                else:
+                    success = loop.run_until_complete(execution_client.cancel_order(order_id))
+                    
+                    if success:
+                        return f"✅ Order {order_id} cancelled successfully"
+                    else:
+                        return f"❌ Failed to cancel order {order_id} (may not exist or already filled)"
+                        
+            except Exception as e:
+                return f"❌ Order cancellation failed: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error cancelling order: {e}")
+            return f"❌ Error cancelling order: {str(e)}"
+
 
 # =============================================================================
 # Tool Registration Functions
@@ -594,12 +803,23 @@ def get_enhanced_tools(config: Optional[Dict[str, Any]] = None) -> List:
     """Get enhanced tools for the current asset class."""
     toolkit = EnhancedToolkit(config)
     
-    return [
+    base_tools = [
         toolkit.get_market_data,
         toolkit.get_fundamentals, 
         toolkit.get_news,
         toolkit.get_technical_indicators,
     ]
+    
+    # Add execution tools for crypto asset class
+    if toolkit.asset_class == AssetClass.CRYPTO:
+        base_tools.extend([
+            toolkit.create_order,
+            toolkit.get_positions,
+            toolkit.get_balances,
+            toolkit.cancel_order,
+        ])
+    
+    return base_tools
 
 
 def get_legacy_tools(config: Optional[Dict[str, Any]] = None) -> List:

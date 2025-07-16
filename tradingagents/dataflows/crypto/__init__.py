@@ -22,6 +22,11 @@ from .coindesk_client import CoinDeskClient
 from .reddit_crypto_client import RedditCryptoClient
 from .twitter_sentiment_client import TwitterSentimentClient
 
+# Execution Clients
+from .paper_broker import CryptoPaperBroker
+from .ccxt_broker import CCXTBroker, CCXTBrokerFactory
+from .hyperliquid_broker import HyperliquidBroker
+
 # Utilities
 from .caching import CacheManager
 from .rate_limiter import RateLimiter 
@@ -55,6 +60,12 @@ __all__ = [
     # Sentiment Clients
     "RedditCryptoClient",
     "TwitterSentimentClient",
+    
+    # Execution Clients
+    "CryptoPaperBroker",
+    "CCXTBroker",
+    "CCXTBrokerFactory",
+    "HyperliquidBroker",
     
     # Utilities
     "CacheManager",

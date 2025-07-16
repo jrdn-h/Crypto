@@ -399,4 +399,53 @@ def register_default_crypto_providers() -> None:
         ))
         
     except ImportError as e:
-        logger.warning(f"Failed to import crypto sentiment clients: {e}. Crypto sentiment will not be available.") 
+        logger.warning(f"Failed to import crypto sentiment clients: {e}. Crypto sentiment will not be available.")
+    
+    # Execution (crypto trading brokers)
+    try:
+        from .crypto import CryptoPaperBroker, CCXTBroker, HyperliquidBroker
+        
+        register_provider("execution", ProviderConfig(
+            name="crypto_paper_broker",
+            provider_class=CryptoPaperBroker,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.PRIMARY,
+            cost_tier="free",
+            init_kwargs={
+                "initial_balance": 100000.0,
+                "base_currency": "USDT",
+                "enable_perpetuals": True,
+                "max_leverage": 10.0
+            }
+        ))
+        
+        register_provider("execution", ProviderConfig(
+            name="ccxt_broker",
+            provider_class=CCXTBroker,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.SECONDARY,
+            requires_api_key=True,
+            cost_tier="free",  # Depends on exchange, but many offer free API access
+            init_kwargs={
+                "sandbox": True,  # Default to sandbox for safety
+                "enable_perpetuals": True,
+                "max_leverage": 20.0
+            }
+        ))
+        
+        register_provider("execution", ProviderConfig(
+            name="hyperliquid_broker",
+            provider_class=HyperliquidBroker,
+            asset_class=AssetClass.CRYPTO,
+            priority=ProviderPriority.TERTIARY,
+            requires_api_key=True,
+            cost_tier="premium",
+            init_kwargs={
+                "testnet": True,  # Default to testnet for safety
+                "max_leverage": 50.0,
+                "enable_cross_margin": True
+            }
+        ))
+        
+    except ImportError as e:
+        logger.warning(f"Failed to import crypto execution clients: {e}. Crypto execution will not be available.") 
