@@ -29,6 +29,8 @@ from .sentiment_aggregator import SentimentAggregator
 from .crypto_stockstats import CryptoStockstatsUtils
 from .crypto_technical import CryptoTechnicalAnalyzer, CryptoTechnicalConfig
 from .whale_flow_tracker import WhaleFlowTracker, WhaleTransaction, ExchangeFlow, WhaleAlert
+from .tokenomics_analyzer import TokenomicsAnalyzer, get_tokenomics_analysis
+from .regulatory_analyzer import RegulatoryAnalyzer, get_regulatory_analysis
 
 # Data Models
 from .fundamentals_mapping import (
@@ -65,6 +67,10 @@ __all__ = [
     "WhaleTransaction",
     "ExchangeFlow",
     "WhaleAlert",
+    "TokenomicsAnalyzer",
+    "get_tokenomics_analysis",
+    "RegulatoryAnalyzer", 
+    "get_regulatory_analysis",
     
     # Data Models
     "CryptoFundamentals",

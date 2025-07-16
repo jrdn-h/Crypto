@@ -84,18 +84,37 @@ class TradingAgentsGraph:
 
         # Initialize components
         self.conditional_logic = ConditionalLogic()
-        self.graph_setup = GraphSetup(
-            self.quick_thinking_llm,
-            self.deep_thinking_llm,
-            self.toolkit,
-            self.tool_nodes,
-            self.bull_memory,
-            self.bear_memory,
-            self.trader_memory,
-            self.invest_judge_memory,
-            self.risk_manager_memory,
-            self.conditional_logic,
-        )
+        
+        # Choose graph setup based on asset class
+        asset_class = self.config.get("asset_class", "equity")
+        if asset_class == "crypto":
+            from .crypto_enhanced_setup import CryptoEnhancedGraphSetup
+            self.graph_setup = CryptoEnhancedGraphSetup(
+                self.quick_thinking_llm,
+                self.deep_thinking_llm,
+                self.toolkit,
+                self.tool_nodes,
+                self.bull_memory,
+                self.bear_memory,
+                self.trader_memory,
+                self.invest_judge_memory,
+                self.risk_manager_memory,
+                self.conditional_logic,
+                self.config
+            )
+        else:
+            self.graph_setup = GraphSetup(
+                self.quick_thinking_llm,
+                self.deep_thinking_llm,
+                self.toolkit,
+                self.tool_nodes,
+                self.bull_memory,
+                self.bear_memory,
+                self.trader_memory,
+                self.invest_judge_memory,
+                self.risk_manager_memory,
+                self.conditional_logic,
+            )
 
         self.propagator = Propagator()
         self.reflector = Reflector(self.quick_thinking_llm)
@@ -107,7 +126,11 @@ class TradingAgentsGraph:
         self.log_states_dict = {}  # date to full state dict
 
         # Set up the graph
-        self.graph = self.graph_setup.setup_graph(selected_analysts)
+        asset_class = self.config.get("asset_class", "equity")
+        if asset_class == "crypto":
+            self.graph = self.graph_setup.setup_crypto_enhanced_graph(selected_analysts)
+        else:
+            self.graph = self.graph_setup.setup_graph(selected_analysts)
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources."""

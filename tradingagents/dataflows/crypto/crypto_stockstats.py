@@ -283,11 +283,11 @@ class CryptoStockstatsUtils:
             
             if online and symbol in ['BTC', 'ETH']:  # Major coins might have perp data
                 # Mock perpetual futures data
-                            dates = pd.date_range(
-                start=pd.to_datetime(current_date) - timedelta(hours=24),
-                end=pd.to_datetime(current_date),
-                freq='h'
-            )
+                dates = pd.date_range(
+                    start=pd.to_datetime(current_date) - timedelta(hours=24),
+                    end=pd.to_datetime(current_date),
+                    freq='h'
+                )
                 
                 perp_data = pd.DataFrame({
                     'timestamp': dates,
@@ -308,13 +308,7 @@ class CryptoStockstatsUtils:
                     ],
                     'exchange_flows': {
                         'net_flow': -1000000,
-                        'inflow': 5000000,
-                        'outflow': 6000000
-                    },
-                    'network_activity': {
-                        'active_addresses': 1000000,
-                        'transaction_count': 300000,
-                        'avg_transaction_value': 1500
+                        'sentiment': 'bullish'
                     }
                 }
             
