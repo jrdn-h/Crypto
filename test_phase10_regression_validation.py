@@ -158,14 +158,14 @@ class TestEquityDataProviderRegression(unittest.TestCase):
     def test_yfin_utils_regression(self):
         """Test that YFinance utilities still work correctly."""
         try:
-            from tradingagents.dataflows.yfin_utils import YFinanceClient
+            from tradingagents.dataflows.yfin_utils import YFinanceUtils
             
-            # Test YFinance client initialization
-            client = YFinanceClient()
-            self.assertIsNotNone(client, "YFinance client should initialize")
+            # Test YFinance utils initialization
+            utils = YFinanceUtils()
+            self.assertIsNotNone(utils, "YFinance utils should initialize")
             
             # Test basic functionality (without making actual API calls)
-            self.assertTrue(hasattr(client, 'get_market_data'), "Should have get_market_data method")
+            self.assertTrue(hasattr(utils, 'get_stock_data'), "Should have get_stock_data method")
             
         except ImportError as e:
             self.skipTest(f"YFinance utils not available: {e}")
@@ -173,14 +173,10 @@ class TestEquityDataProviderRegression(unittest.TestCase):
     def test_finnhub_utils_regression(self):
         """Test that Finnhub utilities still work correctly."""
         try:
-            from tradingagents.dataflows.finnhub_utils import FinnhubClient
+            from tradingagents.dataflows.finnhub_utils import get_data_in_range
             
-            # Test Finnhub client initialization
-            client = FinnhubClient()
-            self.assertIsNotNone(client, "Finnhub client should initialize")
-            
-            # Test basic functionality
-            self.assertTrue(hasattr(client, 'get_market_data'), "Should have get_market_data method")
+            # Test Finnhub function availability
+            self.assertTrue(callable(get_data_in_range), "get_data_in_range should be callable")
             
         except ImportError as e:
             self.skipTest(f"Finnhub utils not available: {e}")
@@ -188,11 +184,11 @@ class TestEquityDataProviderRegression(unittest.TestCase):
     def test_stockstats_utils_regression(self):
         """Test that StockStats utilities still work correctly."""
         try:
-            from tradingagents.dataflows.stockstats_utils import StockStatsClient
+            from tradingagents.dataflows.stockstats_utils import StockstatsUtils
             
-            # Test StockStats client initialization
-            client = StockStatsClient()
-            self.assertIsNotNone(client, "StockStats client should initialize")
+            # Test StockStats utils initialization
+            utils = StockstatsUtils()
+            self.assertIsNotNone(utils, "StockStats utils should initialize")
             
         except ImportError as e:
             self.skipTest(f"StockStats utils not available: {e}")
