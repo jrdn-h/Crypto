@@ -187,6 +187,45 @@ class RateLimiter:
         else:
             raise RuntimeError("All retry attempts failed with no exception captured")
     
+    def acquire(self) -> bool:
+        """
+        Synchronous wrapper for token acquisition.
+        
+        Returns:
+            bool: True if token was acquired, False if rate limited
+            
+        Note: This is a convenience method for existing synchronous code.
+        For async code, use the underlying limiter's acquire() method directly.
+        """
+        try:
+            # Try to run the async acquire in a new event loop if needed
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an event loop, we can't use run_until_complete
+                # Return False to indicate rate limiting (conservative approach)
+                logger.warning("Cannot acquire token synchronously from within async context")
+                return False
+            else:
+                # No event loop running, safe to create one
+                if isinstance(self._limiter, TokenBucket):
+                    return loop.run_until_complete(self._limiter.acquire())
+                elif isinstance(self._limiter, FixedWindowLimiter):
+                    return loop.run_until_complete(self._limiter.acquire())
+                else:
+                    return False
+        except RuntimeError:
+            # No event loop available, create a new one
+            try:
+                if isinstance(self._limiter, TokenBucket):
+                    return asyncio.run(self._limiter.acquire())
+                elif isinstance(self._limiter, FixedWindowLimiter):
+                    return asyncio.run(self._limiter.acquire())
+                else:
+                    return False
+            except Exception as e:
+                logger.warning(f"Failed to acquire token synchronously: {e}")
+                return False
+    
     def _is_rate_limit_error(self, exception: Exception) -> bool:
         """Check if exception indicates rate limiting."""
         error_msg = str(exception).lower()

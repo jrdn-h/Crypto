@@ -15,6 +15,10 @@ except Exception:  # pragma: no cover – broad but acceptable for graceful degr
         def __init__(self, symbol):
             self.ticker = symbol
 
+        def history(self, *args, **kwargs):  # noqa: D401
+            """Return an empty DataFrame for price history."""
+            return pd.DataFrame()
+
         @staticmethod
         def download(*args, **kwargs):  # noqa: D401
             """Return an empty DataFrame as placeholder market data."""
@@ -96,7 +100,28 @@ class StockstatsUtils:
                 data.to_csv(data_file, index=False)
 
             df = wrap(data)
-            df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
+
+            # -----------------------------------------------------------------
+            # Ensure a canonical "Date" column exists regardless of stockstats
+            # internal name-mangling (it converts all columns to lowercase).
+            # -----------------------------------------------------------------
+
+            if "Date" not in df.columns:
+                # stockstats typically lowercases column names; fall back to
+                # that variant or derive from the index.
+                if "date" in df.columns:
+                    df["Date"] = df["date"]
+                else:
+                    # Fallback: use the original DataFrame's index if it looks
+                    # like a datetime index.
+                    try:
+                        df["Date"] = pd.to_datetime(data.index)
+                    except Exception:
+                        # As a last resort, create a sequential placeholder.
+                        df["Date"] = pd.date_range(start=start_date, periods=len(df))
+
+            # Normalise date to string YYYY-MM-DD for downstream comparisons.
+            df["Date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")
             curr_date = curr_date.strftime("%Y-%m-%d")
 
         df[indicator]  # trigger stockstats to calculate the indicator

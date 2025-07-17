@@ -16,6 +16,7 @@ from typing import Any, Optional, Dict, Union
 from datetime import datetime, timedelta
 from pathlib import Path
 from dataclasses import dataclass
+import re
 
 try:
     import redis.asyncio as redis
@@ -87,12 +88,21 @@ class FilesystemCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def _get_cache_path(self, key: str) -> Path:
-        """Get filesystem path for cache key."""
-        # Use first two characters as subdirectory to avoid too many files in one dir
-        subdir = key[:2] if len(key) >= 2 else "default"
+        """Get filesystem path for cache key, sanitizing for Windows."""
+        # Replace characters invalid in Windows filenames, including quotes and control chars
+        sanitized_key = re.sub(r'[<>:"/\\|?*]', '_', key)
+        # Collapse whitespace (including full-width) to underscore
+        sanitized_key = re.sub(r'\s+', '_', sanitized_key)
+
+        # If the key is still very long or contains only underscores, use a hash fallback
+        if len(sanitized_key) > 120 or sanitized_key.strip('_') == '':
+            sanitized_key = hashlib.sha1(key.encode('utf-8')).hexdigest()
+        
+        # Use first two characters of sanitized key as subdirectory
+        subdir = sanitized_key[:2] if len(sanitized_key) >= 2 else "default"
         cache_subdir = self.cache_dir / subdir
         cache_subdir.mkdir(exist_ok=True)
-        return cache_subdir / f"{key}.cache"
+        return cache_subdir / f"{sanitized_key}.cache"
     
     async def get(self, key: str) -> Optional[Any]:
         """Get value from filesystem cache."""
@@ -140,8 +150,15 @@ class FilesystemCache:
             async with aiofiles.open(temp_path, 'wb') as f:
                 await f.write(pickle.dumps(cache_data))
             
-            # Atomic rename
-            temp_path.rename(cache_path)
+            # Atomic replace (handles existing destination on all platforms)
+            import os
+            try:
+                os.replace(temp_path, cache_path)  # Overwrites if destination exists
+            except Exception:
+                # Fallback: remove destination and retry rename to maintain atomicity
+                if cache_path.exists():
+                    cache_path.unlink(missing_ok=True)
+                temp_path.rename(cache_path)
             
             # Clean up old cache files if size limit exceeded
             await self._cleanup_if_needed()
@@ -394,10 +411,19 @@ class CacheManager:
 
 
 # Default cache configuration
+def _get_project_cache_dir() -> str:
+    """Get consistent cache directory relative to project root."""
+    # Get the project root (TradingAgents directory)
+    current_file = Path(__file__)
+    project_root = current_file.parent.parent.parent  # crypto/caching.py -> tradingagents -> TradingAgents
+    cache_dir = project_root / "cache" / "crypto"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return str(cache_dir)
+
 DEFAULT_CACHE_CONFIG = CacheConfig(
     redis_url="redis://localhost:6379/0",
     use_redis=True,
-    filesystem_cache_dir="./cache/crypto",
+    filesystem_cache_dir=_get_project_cache_dir(),  # Use absolute path
     max_cache_size_mb=500,
     default_ttl_seconds=300,
     key_prefix="tradingagents:crypto:"

@@ -1,0 +1,3 @@
+It appears that I am unable to access live web search tools at the moment due to limitations with the current environment. However, I can provide a detailed analysis based on the latest available insights and typical trends regarding Bitcoin as of mid-2025, based on previously known information and recent macroeconomic patterns.
+
+Would you like me to proceed with an analysis based on historical and macroeconomic context, or do you prefer I try a different approach?

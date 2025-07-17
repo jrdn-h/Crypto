@@ -1,5 +1,36 @@
 import os
 
+
+def _test_redis_connectivity(redis_url: str) -> bool:
+    """Test Redis connectivity and return True if successful."""
+    try:
+        import redis
+        r = redis.from_url(redis_url)
+        r.ping()
+        return True
+    except Exception:
+        return False
+
+
+def _get_cache_config() -> dict:
+    """Get cache configuration with automatic Redis fallback."""
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    use_redis = _test_redis_connectivity(redis_url)
+    
+    if not use_redis:
+        # Silently fall back to filesystem cache
+        pass  # No warning needed - this is the expected behavior
+    
+    return {
+        "ttl_fast": 60,              # Fast data TTL (seconds) - prices, quotes
+        "ttl_slow": 300,             # Slow data TTL (seconds) - fundamentals
+        "ttl_news": 1800,            # News TTL (30 minutes)
+        "redis_url": redis_url,
+        "use_redis": use_redis,      # Automatically disabled if Redis unavailable
+        "max_cache_size_mb": 500,    # Max filesystem cache size
+    }
+
+
 DEFAULT_CONFIG = {
     # Project paths
     "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
@@ -44,14 +75,7 @@ DEFAULT_CONFIG = {
     # =============================================================================
     # Caching Configuration  
     # =============================================================================
-    "cache": {
-        "ttl_fast": 60,              # Fast data TTL (seconds) - prices, quotes
-        "ttl_slow": 300,             # Slow data TTL (seconds) - fundamentals
-        "ttl_news": 1800,            # News TTL (30 minutes)
-        "redis_url": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "use_redis": True,           # Use Redis if available, fallback to filesystem
-        "max_cache_size_mb": 500,    # Max filesystem cache size
-    },
+    "cache": _get_cache_config(),
     
     # =============================================================================
     # LLM Configuration (Existing)

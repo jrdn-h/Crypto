@@ -644,3 +644,66 @@ def create_config_template(asset_class: str, provider_preset: str, cost_preset: 
         config["trading"]["market_hours_only"] = True
     
     return config
+
+
+def select_shallow_model() -> str:
+    """Select shallow thinking model for fast analysis."""
+    
+    SHALLOW_MODELS = [
+        ("GPT-4o Mini - Fast and cost-effective (~$0.15 per 1M tokens)", "gpt-4o-mini"),
+        ("GPT-4o - High quality, balanced speed (~$2.5 per 1M tokens)", "gpt-4o"),
+        ("GPT-3.5 Turbo - Legacy fast model (~$0.5 per 1M tokens)", "gpt-3.5-turbo"),
+    ]
+    
+    choice = questionary.select(
+        "Select Shallow Thinking Model:",
+        choices=[
+            questionary.Choice(display, value=value) for display, value in SHALLOW_MODELS
+        ],
+        instruction="\nUsed for: Quick analysis, tool calls, routine tasks",
+        style=questionary.Style(
+            [
+                ("selected", "fg:cyan noinherit"),
+                ("highlighted", "fg:cyan noinherit"),
+                ("pointer", "fg:cyan noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    if choice is None:
+        console.print("\n[red]No model selected. Using default 'gpt-4o-mini'...[/red]")
+        return "gpt-4o-mini"
+    
+    return choice
+
+
+def select_deep_model() -> str:
+    """Select deep thinking model for complex reasoning."""
+    
+    DEEP_MODELS = [
+        ("GPT-4o Mini - Fast and cost-effective (~$0.15 per 1M tokens)", "gpt-4o-mini"),
+        ("GPT-4o - High quality reasoning (~$2.5 per 1M tokens)", "gpt-4o"),
+        ("o1-preview - Advanced reasoning, slow (~$15 per 1M tokens)", "o1-preview"),
+        ("o1-mini - Balanced reasoning (~$3 per 1M tokens)", "o1-mini"),
+    ]
+    
+    choice = questionary.select(
+        "Select Deep Thinking Model:",
+        choices=[
+            questionary.Choice(display, value=value) for display, value in DEEP_MODELS
+        ],
+        instruction="\nUsed for: Complex research, debate rounds, final decisions",
+        style=questionary.Style(
+            [
+                ("selected", "fg:cyan noinherit"),
+                ("highlighted", "fg:cyan noinherit"),
+                ("pointer", "fg:cyan noinherit"),
+            ]
+        ),
+    ).ask()
+    
+    if choice is None:
+        console.print("\n[red]No model selected. Using default 'gpt-4o'...[/red]")
+        return "gpt-4o"
+    
+    return choice

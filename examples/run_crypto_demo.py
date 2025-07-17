@@ -19,6 +19,10 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -60,7 +64,13 @@ async def demo_basic_crypto_analysis():
         })
         
         print("🚀 Initializing TradingAgents for crypto analysis...")
-        ta = TradingAgentsGraph(debug=True, config=config)
+        # Use the enhanced toolkit for crypto
+        from tradingagents.dataflows.enhanced_toolkit import EnhancedToolkit
+        ta = TradingAgentsGraph(
+            debug=True,
+            config=config,
+            toolkit=EnhancedToolkit(config=config)
+        )
         
         # Analyze Bitcoin
         symbol = "BTC/USDT"
@@ -105,8 +115,8 @@ async def demo_market_data_clients():
         
         for symbol in symbols:
             try:
-                price_data = await coingecko.get_price(symbol, datetime.now().strftime("%Y-%m-%d"))
-                print(f"  {symbol.upper()}: ${price_data.get('price', 'N/A'):,.2f}")
+                price_data = await coingecko.get_latest_price(symbol)
+                print(f"  {symbol.upper()}: ${price_data:,.2f}" if price_data else f"  {symbol.upper()}: Not found")
             except Exception as e:
                 print(f"  {symbol.upper()}: Error - {e}")
                 
@@ -122,8 +132,8 @@ async def demo_market_data_clients():
         crypto_pairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
         for pair in crypto_pairs:
             try:
-                price_data = await binance.get_price(pair, datetime.now().strftime("%Y-%m-%d"))
-                print(f"  {pair}: ${price_data.get('price', 'N/A'):,.2f}")
+                price_data = await binance.get_latest_price(pair)
+                print(f"  {pair}: ${price_data:,.2f}" if price_data else f"  {pair}: Not found")
             except Exception as e:
                 print(f"  {pair}: Error - {e}")
                 
@@ -139,8 +149,8 @@ async def demo_paper_trading():
         # Initialize paper broker with starting balance
         initial_balance = {"USDT": 10000}  # $10,000 USDT
         broker = CryptoPaperBroker(
-            initial_balance=initial_balance,
-            enable_perps=True
+            initial_balance=initial_balance["USDT"],
+            enable_perpetuals=True
         )
         
         print(f"💰 Starting paper trading with {initial_balance}")
@@ -215,20 +225,20 @@ async def demo_risk_management():
     try:
         # Configure risk limits
         risk_limits = RiskLimits(
-            max_portfolio_risk=0.15,      # 15% max portfolio risk
-            max_position_size=0.10,       # 10% max single position
+            max_daily_var=0.15,      # 15% max portfolio risk
+            max_position_size_usd=10000,   # $10k max single position
             max_leverage=5,               # 5x max leverage
-            max_concentration=0.30        # 30% max in single asset
+            max_portfolio_concentration=0.30  # 30% max in single asset
         )
         
         print("⚠️  Initializing crypto risk manager...")
         risk_manager = CryptoRiskManager(risk_limits=risk_limits)
         
         print(f"📋 Risk Limits Configuration:")
-        print(f"  Max Portfolio Risk: {risk_limits.max_portfolio_risk:.1%}")
-        print(f"  Max Position Size: {risk_limits.max_position_size:.1%}")
+        print(f"  Max Daily VaR: {risk_limits.max_daily_var:.1%}")
+        print(f"  Max Position Size: ${risk_limits.max_position_size_usd:,.0f}")
         print(f"  Max Leverage: {risk_limits.max_leverage}x")
-        print(f"  Max Concentration: {risk_limits.max_concentration:.1%}")
+        print(f"  Max Concentration: {risk_limits.max_portfolio_concentration:.1%}")
         
         # Mock portfolio for demonstration
         mock_positions = {
@@ -309,14 +319,14 @@ async def demo_provider_comparison():
             client = provider_class()
             
             # Test basic price fetch
-            price_data = await client.get_price(test_symbol, datetime.now().strftime("%Y-%m-%d"))
+            price_data = await client.get_latest_price(test_symbol)
             
             end_time = datetime.now()
             response_time = (end_time - start_time).total_seconds()
             
             print(f"✅ {provider_name}:")
             print(f"  Response time: {response_time:.2f}s")
-            print(f"  Price: ${price_data.get('price', 'N/A'):,.2f}")
+            print(f"  Price: ${price_data:,.2f}" if price_data else "  Price: Not found")
             print(f"  Status: Available")
             
         except Exception as e:

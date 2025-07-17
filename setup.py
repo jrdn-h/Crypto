@@ -29,7 +29,11 @@ setup(
     python_requires=">=3.10",
     entry_points={
         "console_scripts": [
-            "tradingagents=cli.main:app",
+            # Expose `tradingagents` command pointing to the Typer app. We now
+            # reference the canonical module path inside the package to avoid
+            # relying on the thin shim and to prevent potential namespace
+            # ambiguities in some environments.
+            "tradingagents=TradingAgents.cli.main:app",
         ],
     },
     classifiers=[

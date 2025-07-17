@@ -417,3 +417,47 @@ class Toolkit:
         )
 
         return openai_fundamentals_results
+
+    @staticmethod
+    @tool
+    def get_news(
+        query: Annotated[str, "Ticker symbol or topic to fetch news for (leave blank for global news)"],
+        start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
+        end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+        limit: Annotated[int, "Maximum number of articles to return"] = 50,
+    ) -> str:
+        """Generic news retrieval for legacy Toolkit.
+
+        This fallback implementation mimics the interface exposed by the
+        enhanced toolkit so that downstream code can call `get_news` even when
+        the enhanced toolkit is *not* in use (i.e. `online_tools=False`).
+
+        Behaviour:
+        • If a `query`/ticker is provided we use Finnhub's company-specific news.
+        • Otherwise we fall back to Google News for broad market coverage.
+
+        Args:
+            query: Company ticker (e.g. AAPL) or free-form topic.
+            start_date: Starting date (YYYY-MM-DD).
+            end_date: Ending date (YYYY-MM-DD).
+            limit: Max number of articles (best-effort; depends on provider).
+
+        Returns:
+            str: A formatted string or JSON payload containing the news items.
+        """
+        try:
+            # Prefer Finnhub for specific tickers when available
+            if query:
+                # Finnhub helper expects the *current* date plus look-back window
+                # Calculate look-back period in days
+                from datetime import datetime as _dt, timedelta as _td
+                end_dt = _dt.strptime(end_date, "%Y-%m-%d") if end_date else _dt.today()
+                start_dt = _dt.strptime(start_date, "%Y-%m-%d") if start_date else end_dt - _td(days=7)
+                look_back = max((end_dt - start_dt).days, 1)
+
+                return interface.get_finnhub_news(query, end_dt.strftime("%Y-%m-%d"), look_back)[:limit]
+
+            # Fallback to Google News for global headlines (uses current date param)
+            return interface.get_google_news("global market news", end_date or start_date or _dt.today().strftime("%Y-%m-%d"), 7)[:limit]
+        except Exception as e:
+            return f"❌ Error retrieving news: {e}"

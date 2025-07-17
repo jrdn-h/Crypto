@@ -282,32 +282,6 @@ def get_simfin_income_statements(
     )
 
 
-def get_google_news(
-    query: Annotated[str, "Query to search with"],
-    curr_date: Annotated[str, "Curr date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"],
-) -> str:
-    query = query.replace(" ", "+")
-
-    start_date = datetime.strptime(curr_date, "%Y-%m-%d")
-    before = start_date - relativedelta(days=look_back_days)
-    before = before.strftime("%Y-%m-%d")
-
-    news_results = getNewsData(query, before, curr_date)
-
-    news_str = ""
-
-    for news in news_results:
-        news_str += (
-            f"### {news['title']} (source: {news['source']}) \n\n{news['snippet']}\n\n"
-        )
-
-    if len(news_results) == 0:
-        return ""
-
-    return f"## {query} Google News, from {before} to {curr_date}:\n\n{news_str}"
-
-
 def get_reddit_global_news(
     start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
     look_back_days: Annotated[int, "how many days to look back"],
@@ -737,39 +711,32 @@ def get_stock_news_openai(ticker, curr_date):
     return response.output[1].content[0].text
 
 
-def get_global_news_openai(curr_date):
-    config = get_config()
-    client = OpenAI(base_url=config["backend_url"])
+def get_global_news_openai(
+    curr_date: Annotated[str, "Curr date in yyyy-mm-dd format"]
+) -> str:
+    """
+    Get global news from various sources using Tavily Search.
+    """
+    try:
+        # Check if the model supports web search
+        from langchain_openai import ChatOpenAI
+        if "nano" in ChatOpenAI().model_name:
+            # Fallback for models that don't support web search
+            return get_news("global market news", curr_date, 1)
 
-    response = client.responses.create(
-        model=config["quick_think_llm"],
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": f"Can you search global or macroeconomics news from 7 days before {curr_date} to {curr_date} that would be informative for trading purposes? Make sure you only get the data posted during that period.",
-                    }
-                ],
-            }
-        ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[
-            {
-                "type": "web_search_preview",
-                "user_location": {"type": "approximate"},
-                "search_context_size": "low",
-            }
-        ],
-        temperature=1,
-        max_output_tokens=4096,
-        top_p=1,
-        store=True,
-    )
+        tool = TavilySearchResults(max_results=5)
+        search_results = tool.invoke(
+            f"global financial news, stock market news on {curr_date}"
+        )
 
-    return response.output[1].content[0].text
+        news_str = ""
+        for news in search_results:
+            news_str += f"### {news['title']}\n\n{news['content']}\n\n"
+
+        return f"## Global News on {curr_date}:\n\n{news_str}"
+    except Exception as e:
+        # Fallback to basic news search on any error
+        return get_news("global market news", curr_date, 1)
 
 
 def get_fundamentals_openai(ticker, curr_date):

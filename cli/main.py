@@ -20,6 +20,10 @@ from rich import box
 from rich.align import Align
 from rich.rule import Rule
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.models import AnalystType
@@ -395,8 +399,7 @@ def get_user_selections(
     ticker: Optional[str] = None,
     asset_class: Optional[str] = None,
     date: Optional[str] = None,
-    provider_preset: Optional[str] = None,
-    cost_preset: Optional[str] = None
+    provider_preset: Optional[str] = None
 ):
     """Get all user selections before starting the analysis display."""
     # Display ASCII art welcome message
@@ -431,34 +434,40 @@ def get_user_selections(
             box_content += f"\n[dim]Default: {default}[/dim]"
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
-    # Step 1: Ticker symbol
+    # ------------------------------------------------------------------
+    # Step 1: Asset Class
+    # ------------------------------------------------------------------
     console.print(
         create_question_box(
-            "Step 1: Ticker Symbol", "Enter the ticker symbol to analyze", "SPY"
+            "Step 1: Asset Class", "Select the type of assets to analyze"
         )
     )
-    selected_ticker = get_ticker()
+    selected_asset_class = asset_class if asset_class else select_asset_class()
+    console.print(f"[green]Selected asset class:[/green] {selected_asset_class}")
 
-    # Step 2: Analysis date
+    # ------------------------------------------------------------------
+    # Step 2: Ticker symbol (prompt defaults depend on asset class)
+    # ------------------------------------------------------------------
+    default_ticker = "BTC/USDT" if selected_asset_class == "crypto" else "SPY"
+    console.print(
+        create_question_box(
+            "Step 2: Ticker Symbol", "Enter the ticker symbol to analyze", default_ticker
+        )
+    )
+    selected_ticker = get_ticker(selected_asset_class) if not ticker else ticker
+
+    # ------------------------------------------------------------------
+    # Step 3: Analysis date
+    # ------------------------------------------------------------------
     default_date = datetime.datetime.now().strftime("%Y-%m-%d")
     console.print(
         create_question_box(
-            "Step 2: Analysis Date",
+            "Step 3: Analysis Date",
             "Enter the analysis date (YYYY-MM-DD)",
             default_date,
         )
     )
-    analysis_date = get_analysis_date()
-
-    # Step 3: Asset Class
-    console.print(
-        create_question_box(
-            "Step 3: Asset Class", "Select the type of assets to analyze"
-        )
-    )
-    # Use provided asset class or prompt for selection
-    selected_asset_class = asset_class if asset_class else select_asset_class()
-    console.print(f"[green]Selected asset class:[/green] {selected_asset_class}")
+    analysis_date = get_analysis_date() if not date else date
 
     # Step 4: Provider Preset
     console.print(
@@ -479,19 +488,31 @@ def get_user_selections(
     if questionary.confirm(f"Would you like to see provider setup recommendations for {selected_asset_class}?").ask():
         console.print(Panel(recommendations, title="Provider Recommendations", border_style="cyan"))
 
-    # Step 5: Cost Preset
+    # Step 5: Model Selection
     console.print(
         create_question_box(
-            "Step 5: Cost Optimization", "Select cost preset to balance performance vs cost"
+            "Step 5: Shallow Model", "Select model for quick analysis and tool calls"
         )
     )
-    selected_cost_preset = cost_preset if cost_preset else select_cost_preset()
-    console.print(f"[green]Selected cost preset:[/green] {selected_cost_preset}")
+    selected_shallow_thinker = select_shallow_model()
+    console.print(f"[green]Selected shallow model:[/green] {selected_shallow_thinker}")
 
-    # Step 6: Select analysts
     console.print(
         create_question_box(
-            "Step 6: Analysts Team", "Select your LLM analyst agents for the analysis"
+            "Step 6: Deep Model", "Select model for complex reasoning and analysis"
+        )
+    )
+    selected_deep_thinker = select_deep_model()
+    console.print(f"[green]Selected deep model:[/green] {selected_deep_thinker}")
+
+    # LLM provider settings
+    selected_llm_provider = "openai"  # default; can be exposed later via config command
+    backend_url = "https://api.openai.com/v1"
+
+    # Step 7: Select analysts
+    console.print(
+        create_question_box(
+            "Step 7: Analysts Team", "Select your LLM analyst agents for the analysis"
         )
     )
     selected_analysts = select_analysts()
@@ -499,37 +520,19 @@ def get_user_selections(
         f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
     )
 
-    # Step 5: Research depth
+    # Step 8: Research depth
     console.print(
         create_question_box(
-            "Step 5: Research Depth", "Select your research depth level"
+            "Step 8: Research Depth", "Select your research depth level"
         )
     )
     selected_research_depth = select_research_depth()
-
-    # Step 6: OpenAI backend
-    console.print(
-        create_question_box(
-            "Step 6: LLM Provider", "Select which LLM service to use"
-        )
-    )
-    selected_llm_provider, backend_url = select_llm_provider()
-    
-    # Step 7: Thinking agents
-    console.print(
-        create_question_box(
-            "Step 7: Thinking Agents", "Select your thinking agents for analysis"
-        )
-    )
-    selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
-    selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
 
     return {
         "ticker": selected_ticker,
         "analysis_date": analysis_date,
         "asset_class": selected_asset_class,
         "provider_preset": selected_provider_preset,
-        "cost_preset": selected_cost_preset,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,
         "llm_provider": selected_llm_provider.lower(),
@@ -539,9 +542,10 @@ def get_user_selections(
     }
 
 
-def get_ticker():
-    """Get ticker symbol from user input."""
-    return typer.prompt("", default="SPY")
+def get_ticker(asset_class: str = "equity"):
+    """Get ticker symbol from user input with asset class appropriate default."""
+    default_ticker = "BTC/USDT" if asset_class == "crypto" else "SPY"
+    return typer.prompt("", default=default_ticker)
 
 
 def get_analysis_date():
@@ -784,8 +788,7 @@ def run_analysis(
     date: Optional[str] = None,
     config: Optional[str] = None,
     interactive: bool = True,
-    provider_preset: Optional[str] = None,
-    cost_preset: Optional[str] = None
+    provider_preset: Optional[str] = None
 ):
     # Load configuration
     if config:
@@ -799,16 +802,14 @@ def run_analysis(
             ticker=ticker,
             asset_class=asset_class,
             date=date,
-            provider_preset=provider_preset,
-            cost_preset=cost_preset
+            provider_preset=provider_preset
         )
     else:
         selections = get_non_interactive_selections(
             ticker=ticker,
             asset_class=asset_class,
             date=date,
-            provider_preset=provider_preset,
-            cost_preset=cost_preset
+            provider_preset=provider_preset
         )
 
     # Create config with selected options
@@ -821,13 +822,8 @@ def run_analysis(
     config["backend_url"] = selections["backend_url"]
     config["llm_provider"] = selections["llm_provider"].lower()
     
-    # Apply provider and cost preset configurations
+    # Apply provider configuration
     config["provider_preset"] = selections.get("provider_preset", "free")
-    config["cost_preset"] = selections.get("cost_preset", "balanced")
-    
-    # Apply cost preset optimizations
-    from cli.utils import apply_cost_preset_to_config
-    config = apply_cost_preset_to_config(config, selections.get("cost_preset", "balanced"), selections["asset_class"])
     
     # Show selected providers for the asset class
     if selections["asset_class"] == "crypto":
@@ -1197,8 +1193,7 @@ def get_non_interactive_selections(
     ticker: Optional[str] = None,
     asset_class: Optional[str] = None,
     date: Optional[str] = None,
-    provider_preset: Optional[str] = None,
-    cost_preset: Optional[str] = None
+    provider_preset: Optional[str] = None
 ):
     """Get selections for non-interactive mode with validation."""
     import datetime
@@ -1231,8 +1226,7 @@ def get_non_interactive_selections(
         "deep_thinker": "gpt-4o",
         "llm_provider": "OpenAI",
         "backend_url": "https://api.openai.com/v1",
-        "provider_preset": provider_preset or "free",
-        "cost_preset": cost_preset or ("cheap" if asset_class == "crypto" else "balanced")
+        "provider_preset": provider_preset or "free"
     }
 
 
@@ -1468,8 +1462,7 @@ def run_crypto_analysis(ticker: Optional[str] = None):
             ticker=ticker,
             asset_class="crypto",
             interactive=False,
-            provider_preset="premium",
-            cost_preset="cheap"
+            provider_preset="premium"
         )
 
 
@@ -1647,6 +1640,27 @@ def export_configuration(export_path: str):
         console.print(f"[red]Error exporting configuration: {e}[/red]")
 
 
+@app.callback(invoke_without_command=True)
+def _default_command(ctx: typer.Context):
+    """Run interactive analysis wizard when no subcommand is provided.
+
+    This makes `python -m cli.main` behave the same as running the interactive
+    `analyze` workflow, providing a smoother UX that matches the README docs.
+    """
+    if ctx.invoked_subcommand is not None:
+        # A subcommand (e.g., analyze, crypto, providers) was invoked – do nothing.
+        return
+
+    console.rule("[bold cyan]TradingAgents Interactive Analysis Wizard[/bold cyan]")
+    console.print("[green]Launching interactive workflow...[/green]\n")
+    # Launch the standard interactive analysis flow
+    try:
+        run_analysis(interactive=True)
+    except Exception as exc:
+        console.print(f"[red]Unexpected error during interactive analysis:[/red] {exc}")
+        raise
+
+
 @app.command()
 def analyze(
     ticker: Optional[str] = typer.Option(None, "--ticker", "-t", help="Ticker symbol to analyze (e.g., BTC/USDT, AAPL)"),
@@ -1655,7 +1669,6 @@ def analyze(
     config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to configuration file"),
     interactive: bool = typer.Option(True, "--interactive/--non-interactive", help="Run in interactive mode"),
     provider_preset: Optional[str] = typer.Option(None, "--provider-preset", help="Provider preset: 'free', 'premium', 'enterprise'"),
-    cost_preset: Optional[str] = typer.Option(None, "--cost-preset", help="Cost preset: 'cheap', 'balanced', 'premium'"),
 ):
     """Run trading analysis with optional command line arguments."""
     run_analysis(
@@ -1664,8 +1677,7 @@ def analyze(
         date=date,
         config=config,
         interactive=interactive,
-        provider_preset=provider_preset,
-        cost_preset=cost_preset
+        provider_preset=provider_preset
     )
 
 

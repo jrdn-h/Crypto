@@ -136,6 +136,7 @@ class TradingAgentsGraph:
         """Create tool nodes for different data sources."""
         # Check if enhanced toolkit is enabled
         use_enhanced = self.config.get("features", {}).get("crypto_support", False)
+        asset_class = self.config.get("asset_class", "equity")
         
         if use_enhanced:
             # Use enhanced toolkit with cross-asset support
@@ -144,74 +145,113 @@ class TradingAgentsGraph:
             enhanced_tools = get_enhanced_tools(self.config)
             legacy_tools = get_legacy_tools(self.config)
             
-            return {
-                "market": ToolNode(enhanced_tools[:1] + [  # Enhanced market data
+            # For crypto, exclude YFin tools; for equity, include them as fallback
+            market_tools = [enhanced_tools[0]]  # Enhanced market data
+            if asset_class != "crypto":
+                market_tools.extend([
                     self.toolkit.get_YFin_data_online if self.config.get("online_tools") else self.toolkit.get_YFin_data,
                     self.toolkit.get_stockstats_indicators_report_online if self.config.get("online_tools") else self.toolkit.get_stockstats_indicators_report,
-                ]),
-                "social": ToolNode([
-                    enhanced_tools[2],  # Enhanced news (can handle social)
-                    self.toolkit.get_stock_news_openai if self.config.get("online_tools") else self.toolkit.get_reddit_stock_info,
-                ]),
-                "news": ToolNode([
-                    enhanced_tools[2],  # Enhanced news
-                    self.toolkit.get_global_news_openai if self.config.get("online_tools") else self.toolkit.get_google_news,
+                ])
+            
+            # For news and fundamentals, exclude equity-specific tools for crypto
+            news_tools = [enhanced_tools[2]]  # Enhanced news
+            if asset_class != "crypto":
+                news_tools.extend([
+                    self.toolkit.get_global_news_openai if self.config.get("online_tools") else self.toolkit.get_news,
                     self.toolkit.get_finnhub_news,
                     self.toolkit.get_reddit_news,
-                ]),
-                "fundamentals": ToolNode([
-                    enhanced_tools[1],  # Enhanced fundamentals
+                ])
+            
+            fundamentals_tools = [enhanced_tools[1]]  # Enhanced fundamentals
+            if asset_class != "crypto":
+                fundamentals_tools.extend([
                     self.toolkit.get_fundamentals_openai if self.config.get("online_tools") else self.toolkit.get_finnhub_company_insider_sentiment,
                     self.toolkit.get_finnhub_company_insider_transactions,
                     self.toolkit.get_simfin_balance_sheet,
                     self.toolkit.get_simfin_cashflow,
                     self.toolkit.get_simfin_income_stmt,
+                ])
+            
+            return {
+                "market": ToolNode(market_tools),
+                "social": ToolNode([
+                    enhanced_tools[2],  # Enhanced news (can handle social)
+                    self.toolkit.get_stock_news_openai if self.config.get("online_tools") else self.toolkit.get_reddit_stock_info,
                 ]),
+                "news": ToolNode(news_tools),
+                "fundamentals": ToolNode(fundamentals_tools),
             }
         else:
             # Use legacy toolkit (backward compatibility)
-            return {
-                "market": ToolNode(
-                    [
-                        # online tools
-                        self.toolkit.get_YFin_data_online,
-                        self.toolkit.get_stockstats_indicators_report_online,
-                        # offline tools
-                        self.toolkit.get_YFin_data,
-                        self.toolkit.get_stockstats_indicators_report,
-                    ]
-                ),
-                "social": ToolNode(
-                    [
+            # For crypto, exclude YFin and equity-specific tools
+            if asset_class == "crypto":
+                return {
+                    "market": ToolNode([
+                        # Crypto doesn't use YFin tools - only stockstats for technical indicators
+                        self.toolkit.get_stockstats_indicators_report_online if self.config.get("online_tools") else self.toolkit.get_stockstats_indicators_report,
+                    ]),
+                    "social": ToolNode([
                         # online tools
                         self.toolkit.get_stock_news_openai,
                         # offline tools
                         self.toolkit.get_reddit_stock_info,
-                    ]
-                ),
-                "news": ToolNode(
-                    [
+                    ]),
+                    "news": ToolNode([
                         # online tools
                         self.toolkit.get_global_news_openai,
-                        self.toolkit.get_google_news,
-                        # offline tools
-                        self.toolkit.get_finnhub_news,
+                        self.toolkit.get_news,
+                        # offline tools - exclude Finnhub for crypto
                         self.toolkit.get_reddit_news,
-                    ]
-                ),
-                "fundamentals": ToolNode(
-                    [
-                        # online tools
+                    ]),
+                    "fundamentals": ToolNode([
+                        # online tools - exclude equity-specific tools
                         self.toolkit.get_fundamentals_openai,
-                        # offline tools
-                        self.toolkit.get_finnhub_company_insider_sentiment,
-                        self.toolkit.get_finnhub_company_insider_transactions,
-                        self.toolkit.get_simfin_balance_sheet,
-                        self.toolkit.get_simfin_cashflow,
-                        self.toolkit.get_simfin_income_stmt,
-                    ]
-                ),
-            }
+                        # No offline equity tools for crypto
+                    ]),
+                }
+            else:
+                return {
+                    "market": ToolNode(
+                        [
+                            # online tools
+                            self.toolkit.get_YFin_data_online,
+                            self.toolkit.get_stockstats_indicators_report_online,
+                            # offline tools
+                            self.toolkit.get_YFin_data,
+                            self.toolkit.get_stockstats_indicators_report,
+                        ]
+                    ),
+                    "social": ToolNode(
+                        [
+                            # online tools
+                            self.toolkit.get_stock_news_openai,
+                            # offline tools
+                            self.toolkit.get_reddit_stock_info,
+                        ]
+                    ),
+                    "news": ToolNode(
+                        [
+                            # online tools
+                            self.toolkit.get_global_news_openai,
+                            self.toolkit.get_news,
+                            # offline tools
+                            self.toolkit.get_finnhub_news,
+                            self.toolkit.get_reddit_news,
+                        ]
+                    ),
+                    "fundamentals": ToolNode(
+                        [
+                            # online tools
+                            self.toolkit.get_fundamentals_openai,
+                            # offline tools
+                            self.toolkit.get_finnhub_company_insider_sentiment,
+                            self.toolkit.get_finnhub_company_insider_transactions,
+                            self.toolkit.get_simfin_balance_sheet,
+                            self.toolkit.get_simfin_cashflow,
+                            self.toolkit.get_simfin_income_stmt,
+                        ]
+                    ),
+                }
 
     def propagate(self, company_name, trade_date):
         """Run the trading agents graph for a company on a specific date."""

@@ -1,0 +1,3 @@
+It seems that there is an issue with retrieving the stock price data for the ticker symbol "SOL." Unfortunately, I cannot proceed with gathering financial indicators without this data.
+
+I recommend waiting for a moment and trying to fetch the stock data again or checking if there are any alternative sources available for the data of SOL. Meanwhile, if you have any other questions or need information on a different stock or topic, feel free to ask!
