@@ -348,8 +348,9 @@ class TestEnhancedToolkitExecution(unittest.TestCase):
         equity_config["asset_class"] = "equity"
         equity_toolkit = EnhancedToolkit(equity_config)
         
-        # Should return error for equity
-        result = equity_toolkit.create_order("AAPL", "buy", "market", 100)
+        # Should return error for equity - access underlying function
+        result = equity_toolkit.create_order.func(equity_toolkit, "AAPL", "buy", "market", 100)
+        
         self.assertIn("❌", result)
         self.assertIn("crypto asset class", result)
 

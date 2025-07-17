@@ -588,8 +588,9 @@ class TestEnhancedToolkitRiskTools(unittest.TestCase):
         equity_config["asset_class"] = "equity"
         equity_toolkit = EnhancedToolkit(equity_config)
         
-        # Should return error for equity
-        result = equity_toolkit.assess_portfolio_risk()
+        # Should return error for equity - access underlying function
+        result = equity_toolkit.assess_portfolio_risk.func(equity_toolkit)
+        
         self.assertIn("❌", result)
         self.assertIn("crypto asset class", result)
 
@@ -635,7 +636,13 @@ class TestPhase8Integration(unittest.TestCase):
             self.assertIsInstance(leverage_rec, LeverageRecommendation)
             
             # Step 4: Margin optimization
-            balance = Balance("USDT", 50000.0, 60000.0, 10000.0, datetime.now(timezone.utc))
+            balance = Balance(
+                currency="USDT",
+                available=50000.0,
+                total=60000.0,
+                reserved=10000.0,
+                last_updated=datetime.now(timezone.utc)
+            )
             margin_analysis = await margin_manager.analyze_margin_allocation([position], [balance])
             self.assertIn('margin_pool', margin_analysis)
             

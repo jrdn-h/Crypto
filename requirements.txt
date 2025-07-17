@@ -49,14 +49,25 @@ chainlit                       # Web UI framework
 rich                           # Rich terminal output
 questionary                    # Interactive CLI prompts
 
-# Additional Crypto Libraries (Optional)
-# python-binance>=1.0.0        # Binance Python API
-# web3>=6.0.0                  # Ethereum Web3 integration
-# cryptography>=3.4.0          # Cryptographic utilities
-# websockets>=10.0              # WebSocket support for live data
+# Additional Crypto Data Providers
+pycoingecko                    # CoinGecko API client
+cryptocompare                  # CryptoCompare API client
+python-binance                 # Binance API client
+binance-python                 # Alternative Binance client
+tweepy                         # Twitter API client
+python-telegram-bot            # Telegram bot support
 
-# Development & Testing (Optional)
-# pytest>=7.0.0                # Testing framework
-# pytest-asyncio>=0.21.0       # Async testing support
-# black>=22.0.0                # Code formatting
-# flake8>=5.0.0                # Code linting
+# Blockchain & Web3 Support
+web3>=7.0.0                    # Ethereum Web3 integration
+cryptography>=3.4.0           # Cryptographic utilities
+websockets>=10.0               # WebSocket support for live data
+
+# Development & Testing
+pytest>=7.0.0                 # Testing framework
+pytest-asyncio>=0.21.0        # Async testing support
+psutil                         # System monitoring
+python-dotenv                  # Environment variable management
+
+# Additional System Dependencies
+# black>=22.0.0                # Code formatting (optional)
+# flake8>=5.0.0                # Code linting (optional)
