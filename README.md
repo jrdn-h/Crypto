@@ -146,6 +146,75 @@ An interface will appear showing results as they load, letting you track the age
   <img src="assets/cli/cli_transaction.png" width="100%" style="display: inline-block; margin: 0 2%;">
 </p>
 
+## 🚀 Crypto Extension (NEW!)
+
+TradingAgents now supports cryptocurrency markets with comprehensive 24/7 trading capabilities!
+
+### 🌟 Crypto Features
+
+- **24/7 Market Analysis** - Continuous trading without market hours
+- **Advanced Crypto Indicators** - Funding rates, perpetual futures, on-chain analysis
+- **Multi-Exchange Support** - Binance, Coinbase, Kraken, Hyperliquid, and more
+- **Perpetual Futures** - Advanced derivatives trading with leverage controls
+- **Risk Management** - Crypto-specific portfolio optimization and monitoring
+- **Free Data Sources** - CoinGecko, Binance public data, CryptoPanic news
+
+### ⚡ Quick Start - Crypto
+
+Enable crypto support in your `.env` file:
+```bash
+# Copy and edit environment file
+cp example.env .env
+
+# Minimum crypto setup (add to .env):
+OPENAI_API_KEY=your_openai_key_here
+DEFAULT_ASSET_CLASS=crypto
+CRYPTO_SUPPORT=true
+```
+
+Run crypto analysis:
+```bash
+# Interactive crypto mode
+python -m cli.main crypto analyze --ticker BTC/USDT
+
+# Command line crypto analysis
+python -m cli.main analyze --asset-class crypto --ticker BTC/USDT
+```
+
+Python API for crypto:
+```python
+from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.default_config import DEFAULT_CONFIG
+
+# Configure for crypto
+config = DEFAULT_CONFIG.copy()
+config.update({
+    "asset_class": "crypto",
+    "crypto_providers": ["coingecko", "binance"],
+    "execution_mode": "paper"
+})
+
+ta = TradingAgentsGraph(debug=True, config=config)
+_, decision = ta.propagate("BTC/USDT", "2024-12-15")
+print(decision)
+```
+
+### 📚 Crypto Documentation
+
+- **📖 [Complete Crypto Guide](CRYPTO_README.md)** - Detailed setup and usage
+- **🎯 [Crypto Examples](examples/)** - Practical trading examples and strategies
+- **⚙️ [Configuration Guide](CRYPTO_README.md#configuration)** - API keys and provider setup
+
+### 🎮 Try Crypto Examples
+
+```bash
+# Run comprehensive crypto demo
+python examples/run_crypto_demo.py
+
+# Explore advanced trading strategies
+python examples/crypto_trading_strategies.py
+```
+
 ## TradingAgents Package
 
 ### Implementation Details
