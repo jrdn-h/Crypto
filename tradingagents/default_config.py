@@ -101,7 +101,7 @@ DEFAULT_CONFIG = {
     # Feature Flags (Gradual Rollout)
     # =============================================================================
     "features": {
-        "crypto_support": True,          # Enable crypto functionality
+        "crypto_support": False,         # Enable crypto functionality (default disabled for backward compatibility)
         "multi_asset_portfolio": False,  # Mix equity + crypto (Phase 8+)
         "advanced_risk_metrics": False,  # Enhanced risk calculations
         "social_sentiment": True,        # Social media sentiment analysis

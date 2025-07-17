@@ -1,31 +1,62 @@
+# =============================================================================
+# TradingAgents Crypto Extension - Requirements
+# =============================================================================
+
+# Core Dependencies
 typing-extensions
+setuptools
+
+# LangChain & AI Framework
 langchain-openai
 langchain-experimental
-pandas
-yfinance
-praw
-feedparser
-stockstats
-eodhd
-langgraph
-chromadb
-setuptools
-backtrader
-akshare
-tushare
-finnhub-python
-parsel
-requests
-tqdm
-pytz
-# Crypto adapter dependencies
-aiohttp>=3.8.0
-aiofiles>=23.0.0
-redis>=4.5.0
-beautifulsoup4>=4.12.0
-ccxt>=4.0.0  # For crypto exchange connectivity (optional)
-chainlit
-rich
-questionary
 langchain_anthropic
 langchain-google-genai
+langgraph
+
+# Data Processing & Analysis
+pandas
+numpy
+pytz
+tqdm
+
+# Financial Data & Trading
+yfinance
+stockstats
+backtrader
+finnhub-python
+eodhd
+akshare
+tushare
+
+# Crypto-Specific Dependencies
+ccxt>=4.0.0                    # Multi-exchange crypto connectivity
+aiohttp>=3.8.0                 # Async HTTP for crypto APIs
+aiofiles>=23.0.0               # Async file operations
+beautifulsoup4>=4.12.0         # Web scraping for crypto data
+
+# News & Social Sentiment
+praw                           # Reddit API client
+feedparser                     # RSS feed parsing
+parsel                         # Web scraping utilities
+requests                       # HTTP requests
+
+# Caching & Storage
+redis>=4.5.0                   # Redis caching (optional)
+chromadb                       # Vector database
+
+# CLI & User Interface
+chainlit                       # Web UI framework
+rich                           # Rich terminal output
+questionary                    # Interactive CLI prompts
+
+# Additional Crypto Libraries (Optional)
+# python-binance>=1.0.0        # Binance Python API
+# web3>=6.0.0                  # Ethereum Web3 integration
+# cryptography>=3.4.0          # Cryptographic utilities
+# websockets>=10.0              # WebSocket support for live data
+
+# Development & Testing (Optional)
+# pytest>=7.0.0                # Testing framework
+# pytest-asyncio>=0.21.0       # Async testing support
+# black>=22.0.0                # Code formatting
+# flake8>=5.0.0                # Code linting
