@@ -455,7 +455,7 @@ class TestPhase7Integration(unittest.TestCase):
 
 def run_comprehensive_tests():
     """Run all Phase 7 tests with summary."""
-    print("🚀 Running Phase 7 Crypto Execution Adapters Test Suite")
+    print(">> Running Phase 7 Crypto Execution Adapters Test Suite")
     print("=" * 60)
     
     test_classes = [

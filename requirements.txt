@@ -19,6 +19,11 @@ numpy
 pytz
 tqdm
 
+# Scientific Computing & Machine Learning
+scipy                          # Scientific computing (required for technical analysis)
+scikit-learn                   # Machine learning algorithms
+matplotlib                     # Plotting and visualization
+
 # Financial Data & Trading
 yfinance
 stockstats
@@ -27,6 +32,12 @@ finnhub-python
 eodhd
 akshare
 tushare
+
+# Additional Financial Data Providers
+yahoo-fin                      # Yahoo Finance data
+alpha-vantage                  # Alpha Vantage API
+quandl                         # Quandl financial data
+iexfinance                     # IEX Cloud financial data
 
 # Crypto-Specific Dependencies
 ccxt>=4.0.0                    # Multi-exchange crypto connectivity
@@ -40,9 +51,24 @@ feedparser                     # RSS feed parsing
 parsel                         # Web scraping utilities
 requests                       # HTTP requests
 
+# Text Processing & NLP (for sentiment analysis)
+nltk                           # Natural Language Toolkit
+textblob                       # Text processing
+vaderSentiment                 # Sentiment analysis
+newspaper3k                    # Article extraction and curation
+
 # Caching & Storage
 redis>=4.5.0                   # Redis caching (optional)
 chromadb                       # Vector database
+
+# Database Connectors
+sqlalchemy                     # SQL toolkit and ORM
+pymongo                        # MongoDB driver
+psycopg2-binary                # PostgreSQL adapter
+
+# Async & Performance
+# uvloop                         # Fast asyncio event loop (Linux/macOS only)
+asyncpg                        # Async PostgreSQL driver
 
 # CLI & User Interface
 chainlit                       # Web UI framework
@@ -61,6 +87,8 @@ python-telegram-bot            # Telegram bot support
 web3>=7.0.0                    # Ethereum Web3 integration
 cryptography>=3.4.0           # Cryptographic utilities
 websockets>=10.0               # WebSocket support for live data
+py-stellar-base                # Stellar blockchain support
+bitcoin                        # Bitcoin utilities
 
 # Development & Testing
 pytest>=7.0.0                 # Testing framework

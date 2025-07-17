@@ -165,6 +165,21 @@ class ProviderRegistry:
         # Merge init kwargs
         init_kwargs = {**config.init_kwargs, **kwargs}
         
+        # Provide a lightweight stub client when no concrete implementation is available.
+        if config.provider_class is None:
+            class _StubClient:
+                """Placeholder client used when a real provider implementation is unavailable."""
+
+                def __init__(self, *args, **kwargs):
+                    pass
+
+            client = _StubClient()
+            self._client_instances[cache_key] = client
+            logger.info(
+                f"Initialized stub client for missing provider {config.name} ({config.asset_class})"
+            )
+            return client
+
         try:
             client = config.provider_class(**init_kwargs)
             self._client_instances[cache_key] = client

@@ -677,7 +677,7 @@ class TestPhase8Integration(unittest.TestCase):
 
 def run_comprehensive_tests():
     """Run all Phase 8 tests with summary."""
-    print("🚀 Running Phase 8 Crypto Risk Management Test Suite")
+    print(">> Running Phase 8 Crypto Risk Management Test Suite")
     print("=" * 60)
     
     test_classes = [
